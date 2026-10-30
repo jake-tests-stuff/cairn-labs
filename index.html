@@ -6,7 +6,7 @@
 <title>Cairn Labs</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders:wght@600;700&family=Archivo:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=JetBrains+Mono:wght@400;500;700&family=Archivo:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#14120F">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -17,38 +17,39 @@
 <style>
 /* layout concept: sticky day-header + scrollable exercise list + bottom tab bar (thumb reach for gym use) */
 :root{
-  --bg:#14120F; --surface:#1E1B17; --surface2:#262220; --line:#34302A;
-  --fg:#F2EEE7; --muted:#A39C8E; --faint:#6E6A61;
-  --accent:#E0A233; --accent-fg:#14120F;
-  --good:#6FA96B; --good-bg:#233020;
-  --warn:#D68A3E; --bad:#D4665A;
-  --radius:10px;
+  --bg:#12110F; --surface:#12110F; --surface2:#1F1D19; --line:#3A362F;
+  --fg:#F3EFE6; --muted:#A8A192; --faint:#8A8476;
+  --accent:#E0764C; --accent-fg:#14120F;
+  --good:#8FBF7A; --good-bg:#1D2619;
+  --warn:#E3B857; --bad:#E5665A;
   color-scheme: dark;
+  --radius:10px;
+  --serif:'Fraunces', Georgia, serif; --mono:'JetBrains Mono', ui-monospace, Menlo, monospace;
 }
 @media (prefers-color-scheme: light){
   :root:not([data-theme="dark"]){
-    --bg:#F5F2EC; --surface:#FFFFFF; --surface2:#ECE7DE; --line:#DDD6C9;
-    --fg:#1C1915; --muted:#6E675C; --faint:#948C7E;
-    --accent:#A6631B; --accent-fg:#FFFFFF;
-    --good:#3F7A3B; --good-bg:#E4EEDF;
-    --warn:#9A5B12; --bad:#B3382C;
-    color-scheme: light;
+  --bg:#F3EFE6; --surface:#F3EFE6; --surface2:#E9E3D3; --line:#CFC7B5;
+  --fg:#1B1A17; --muted:#6B655A; --faint:#7A7366;
+  --accent:#A8431F; --accent-fg:#FFFFFF;
+  --good:#3F6A2E; --good-bg:#E2E8D6;
+  --warn:#8A6310; --bad:#B3382C;
+  color-scheme: light;
   }
 }
 :root[data-theme="light"]{
-  --bg:#F5F2EC; --surface:#FFFFFF; --surface2:#ECE7DE; --line:#DDD6C9;
-  --fg:#1C1915; --muted:#6E675C; --faint:#948C7E;
-  --accent:#A6631B; --accent-fg:#FFFFFF;
-  --good:#3F7A3B; --good-bg:#E4EEDF;
-  --warn:#9A5B12; --bad:#B3382C;
+  --bg:#F3EFE6; --surface:#F3EFE6; --surface2:#E9E3D3; --line:#CFC7B5;
+  --fg:#1B1A17; --muted:#6B655A; --faint:#7A7366;
+  --accent:#A8431F; --accent-fg:#FFFFFF;
+  --good:#3F6A2E; --good-bg:#E2E8D6;
+  --warn:#8A6310; --bad:#B3382C;
   color-scheme: light;
 }
 :root[data-theme="dark"]{
-  --bg:#14120F; --surface:#1E1B17; --surface2:#262220; --line:#34302A;
-  --fg:#F2EEE7; --muted:#A39C8E; --faint:#6E6A61;
-  --accent:#E0A233; --accent-fg:#14120F;
-  --good:#6FA96B; --good-bg:#233020;
-  --warn:#D68A3E; --bad:#D4665A;
+  --bg:#12110F; --surface:#12110F; --surface2:#1F1D19; --line:#3A362F;
+  --fg:#F3EFE6; --muted:#A8A192; --faint:#8A8476;
+  --accent:#E0764C; --accent-fg:#14120F;
+  --good:#8FBF7A; --good-bg:#1D2619;
+  --warn:#E3B857; --bad:#E5665A;
   color-scheme: dark;
 }
 
@@ -57,13 +58,13 @@ html{ height:100%; background:var(--bg); }
 body{ min-height:calc(100% + 2px); min-height:calc(100lvh + 2px); }
 body{
   background:var(--bg); color:var(--fg);
-  font-family:'Archivo', system-ui, sans-serif;
+  font-family:var(--mono);
   font-size:15px; line-height:1.4;
   padding-left:16px; padding-right:16px;
   display:flex; flex-direction:column;
   overscroll-behavior-y:contain;
 }
-h1,h2,h3{ font-family:'Big Shoulders', 'Archivo Black', system-ui, sans-serif; font-weight:700; margin:0; text-transform:uppercase; letter-spacing:.02em; }
+h1,h2,h3{ font-family:var(--serif); font-weight:700; margin:0; text-transform:uppercase; letter-spacing:.02em; }
 .tabular{ font-variant-numeric: tabular-nums; }
 button{ font-family:inherit; touch-action:manipulation; }
 input,select{ font-family:inherit; touch-action:manipulation; }
@@ -115,7 +116,7 @@ main{ flex:1; padding-block:14px 90px; display:flex; flex-direction:column; gap:
 .card.primary{ border-color:var(--accent); box-shadow: inset 3px 0 0 var(--accent); padding-left:12px; }
 .card.cardhidden{ opacity:.5; border-style:dashed; }
 .card .exhead{ display:flex; align-items:baseline; justify-content:space-between; gap:8px; flex-wrap:wrap; }
-.card .exname{ font-family:'Big Shoulders', system-ui, sans-serif; font-weight:600; font-size:17px; text-transform:none; letter-spacing:0; }
+.card .exname{ font-family:var(--serif); font-weight:600; font-size:17px; text-transform:none; letter-spacing:0; }
 .card .chips{ display:flex; gap:6px; flex-wrap:wrap; }
 .chip{ font-size:11.5px; color:var(--muted); background:var(--surface2); border:1px solid var(--line); border-radius:20px; padding:3px 8px; white-space:nowrap; }
 .chip.wt{ color:var(--accent-fg); background:var(--accent); border-color:var(--accent); font-weight:600; }
@@ -240,7 +241,7 @@ table.hist td.mut{ color:var(--muted); }
 .jcard{ background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); min-width:0; }
 .jcard summary{
   list-style:none; cursor:pointer; padding:13px 14px; display:flex; align-items:center; justify-content:space-between; gap:10px;
-  font-family:'Big Shoulders', system-ui, sans-serif; font-weight:700; font-size:19px; text-transform:uppercase; letter-spacing:.02em;
+  font-family:var(--serif); font-weight:700; font-size:19px; text-transform:uppercase; letter-spacing:.02em;
 }
 .jcard summary::-webkit-details-marker{ display:none; }
 .jcard summary .chev{ color:var(--muted); font-size:16px; transition:transform .15s; }
@@ -271,7 +272,7 @@ table.hist td.mut{ color:var(--muted); }
 
 
 /* ---- cairn additions ---- */
-.viewhead .brand, .sheetin .brand{ color:var(--accent); font-size:12px; letter-spacing:.14em; font-family:'Big Shoulders', system-ui, sans-serif; font-weight:700; }
+.viewhead .brand, .sheetin .brand{ color:var(--accent); font-size:12px; letter-spacing:.14em; font-family:var(--serif); font-weight:700; }
 .brand{ display:flex; align-items:center; gap:6px; }
 .clogo{ width:20px; height:20px; display:block; }
 .viewhead h1{ font-size:26px; line-height:1.05; }
@@ -281,7 +282,7 @@ table.hist td.mut{ color:var(--muted); }
 .rhead{ display:flex; align-items:center; gap:8px; }
 .rdot{ width:10px; height:10px; border-radius:50%; background:var(--faint); flex:0 0 auto; }
 .green .rdot{ background:var(--good); } .yellow .rdot{ background:var(--yellow); } .red .rdot{ background:var(--bad); }
-.rtitle{ font-family:'Big Shoulders', system-ui, sans-serif; font-weight:700; font-size:18px; text-transform:uppercase; letter-spacing:.02em; flex:1; }
+.rtitle{ font-family:var(--serif); font-weight:700; font-size:18px; text-transform:uppercase; letter-spacing:.02em; flex:1; }
 .rsum{ font-size:12px; color:var(--faint); text-transform:capitalize; }
 .rtext{ font-size:13.5px; color:var(--muted); }
 .rq{ display:flex; flex-direction:column; gap:5px; }
@@ -294,7 +295,7 @@ table.hist td.mut{ color:var(--muted); }
 .restbar .rfill{ position:absolute; left:0; top:0; bottom:0; width:0; background:var(--surface2); transition:width .25s linear; }
 .restbar .rin{ position:relative; display:flex; align-items:center; gap:10px; padding:9px 12px; }
 .restbar .rlab{ flex:1; min-width:0; font-size:12px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.restbar .rtime{ font-family:'Big Shoulders', system-ui, sans-serif; font-weight:700; font-size:28px; min-width:56px; text-align:center; }
+.restbar .rtime{ font-family:var(--serif); font-weight:700; font-size:28px; min-width:56px; text-align:center; }
 .restbar.go{ background:var(--accent); } .restbar.go .rtime, .restbar.go .rlab{ color:var(--accent-fg); } .restbar.go .rfill{ background:transparent; }
 .rbtn2{ background:var(--surface2); border:1px solid var(--line); color:var(--fg); border-radius:8px; font-size:13px; padding:8px 10px; min-height:36px; }
 body.restshown main{ padding-bottom:150px; }
@@ -306,7 +307,7 @@ body.restshown main{ padding-bottom:150px; }
 .gstack > * + *{ margin-top:10px; } .gstack > .jlabel{ margin-top:14px; margin-bottom:-4px; }
 .statrow{ display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
 .stat{ background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:10px 12px; min-width:0; }
-.stat .sv{ font-family:'Big Shoulders', system-ui, sans-serif; font-weight:700; font-size:24px; line-height:1.1; }
+.stat .sv{ font-family:var(--serif); font-weight:700; font-size:24px; line-height:1.1; }
 .stat .sl{ font-size:10.5px; color:var(--faint); text-transform:uppercase; letter-spacing:.05em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .mbar{ display:grid; grid-template-columns:86px 1fr 54px; gap:8px; align-items:center; font-size:13px; }
 .mtrack{ height:10px; border-radius:6px; background:var(--surface2); position:relative; overflow:hidden; }
@@ -333,6 +334,70 @@ main > .notes, .subbody > .notes{ color:var(--muted); font-size:13px; }
 
 [hidden]{ display:none!important; }
 
+
+/* ===== Field Notes look (paper, ink, serif headings, mono labels, ruled rows) ===== */
+body{ font-size:13px; }
+h1,h2,h3,.card .exname,.recbig,.sv,.rtime,.restbar .rtime,.prow b,.wkd{ text-transform:none !important; letter-spacing:0 !important; font-weight:700 !important; }
+.daytitle h1{ font-size:30px; }
+.card .exname{ font-size:21px !important; }
+.card{ background:transparent !important; border:0 !important; border-top:2px solid var(--fg) !important; border-radius:0 !important; padding:10px 0 12px !important; box-shadow:none !important; }
+.card.primary{ border-top-color:var(--accent) !important; box-shadow:none !important; padding-left:0 !important; }
+.card.primary .exname{ color:var(--accent); }
+.chip,.todaypill,.ghostbtn,.mpick,.navbtn,.edittoggle,.stepbtn,.savebtn,.ddbtn,.plannav .mpick{ border-radius:0 !important; }
+.chip{ background:transparent !important; border:1px solid var(--line) !important; }
+.chip.wt{ background:var(--accent) !important; border-color:var(--accent) !important; color:var(--accent-fg) !important; }
+.setrow{ background:transparent !important; border-radius:0 !important; border-bottom:1px solid var(--line); padding:6px 0 !important; }
+.setrow input{ background:transparent !important; border:0 !important; border-bottom:2px solid var(--line) !important; border-radius:0 !important; font-weight:700; }
+.setrow.prefilled input{ border-bottom-style:dashed !important; }
+.donebtn{ border-radius:0 !important; border:2px solid var(--fg) !important; background:transparent !important; }
+.donebtn.on{ background:var(--accent) !important; border-color:var(--accent) !important; color:var(--accent-fg) !important; }
+.mpick{ background:transparent !important; border:1.5px solid var(--fg) !important; color:var(--fg) !important; }
+.mpick.on{ background:var(--fg) !important; color:var(--bg) !important; }
+.savebtn{ background:var(--accent) !important; color:var(--accent-fg) !important; letter-spacing:.04em; }
+.ghostbtn{ background:transparent !important; border:1px solid var(--line) !important; color:var(--muted) !important; }
+.ghostbtn.danger{ color:var(--warn) !important; border-color:var(--warn) !important; }
+.tabbar{ border-top:2px solid var(--fg) !important; background:var(--bg) !important; }
+.tabbar *{ letter-spacing:.08em; text-transform:uppercase; font-size:10.5px; }
+.topbar{ border-bottom:2px solid var(--fg) !important; }
+.restbar{ border-radius:0 !important; }
+.badge .exname{ font-size:19px !important; }
+.bprog,.bprog i{ border-radius:0 !important; height:5px; }
+.pips i{ border-radius:0 !important; }
+.statrow .stat{ border-radius:0 !important; background:transparent !important; border:0 !important; border-top:2px solid var(--fg) !important; }
+.sheetin{ border-radius:0 !important; }
+.switch,.switch.on{ border-radius:0 !important; border:2px solid var(--fg) !important; background:transparent !important; width:46px; height:26px; }
+.switch::after{ border-radius:0 !important; top:2px; left:2px; width:18px; height:18px; background:var(--fg) !important; }
+.switch.on{ background:var(--accent) !important; border-color:var(--accent) !important; }
+.switch.on::after{ left:22px; background:var(--accent-fg) !important; }
+.plannav.grp .ddbtn{ font-size:12px; padding:9px 4px; letter-spacing:0; }
+.plannav.grp .ddbtn .car{ margin-left:2px; }
+/* settings folds and rows */
+details.fold > summary{ list-style:none; cursor:pointer; display:flex; justify-content:space-between; align-items:center; gap:10px; }
+details.fold > summary::-webkit-details-marker{ display:none; }
+details.fold > summary::after{ content:'▸'; color:var(--muted); font-size:14px; }
+details.fold[open] > summary::after{ content:'▾'; }
+details.fold > summary b, .linkrow b{ display:block; font-family:var(--serif); font-size:18px; font-weight:700; }
+details.fold > summary small, .linkrow small{ display:block; font-size:11px; color:var(--muted); margin-top:2px; font-weight:400; }
+details.fold[open]{ gap:10px; }
+.linkrow{ display:flex; justify-content:space-between; align-items:center; gap:10px; width:100%; background:transparent; border:0; color:var(--fg); text-align:left; padding:2px 0; font:inherit; }
+.linkrow .lv{ color:var(--accent); font-weight:700; display:flex; align-items:center; gap:8px; white-space:nowrap; }
+.linkrow .dot{ width:14px; height:14px; border-radius:50%; background:var(--accent); display:inline-block; }
+/* theme color screen */
+.backlink{ background:transparent; border:0; color:var(--accent); font:inherit; font-size:12px; letter-spacing:.08em; padding:4px 0 8px; text-align:left; }
+.thtitle{ font-size:30px; margin:2px 0; }
+.tgrid{ display:grid; grid-template-columns:repeat(3,1fr); border-top:2px solid var(--fg); margin-top:6px; }
+.tc{ background:transparent; border:0; border-bottom:1px solid var(--line); border-right:1px solid var(--line); padding:10px 4px 8px; text-align:center; position:relative; color:var(--fg); font:inherit; }
+.tc:nth-child(3n){ border-right:0; }
+.tc svg{ width:54px; height:54px; display:block; margin:0 auto; }
+.tc b{ display:block; font-family:var(--serif); font-size:15px; margin-top:2px; }
+.tc.on{ outline:2px solid var(--fg); outline-offset:-2px; }
+.tc.on::after{ content:'IN USE'; position:absolute; top:4px; right:5px; font-size:8.5px; letter-spacing:.1em; font-weight:700; }
+.thprev{ border-top:2px solid var(--fg); margin-top:12px; padding-top:10px; }
+.thprev .lab{ font-size:10.5px; letter-spacing:.1em; color:var(--muted); }
+.throw{ display:flex; gap:10px; align-items:center; margin-top:8px; }
+.thbtn{ padding:11px 16px; font-weight:700; font-size:12px; text-transform:uppercase; }
+.thbar{ height:6px; background:var(--surface2); flex:1; } .thbar i{ display:block; height:100%; width:62%; background:var(--accent); }
+.thchk{ width:22px; height:22px; background:var(--accent); color:var(--accent-fg); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px; }
 </style>
 <style id="polish">
 /* ---- polish pass: basalt and amber, quieter structure, one memorable element (the stone meter) ---- */
@@ -456,7 +521,7 @@ main{ gap:14px; padding-block:16px 96px; }
 .setrow{ grid-template-columns:18px 1fr 66px 50px 46px 40px; gap:6px; padding:3px 0; border-radius:12px; transition:background .25s var(--ease); }
 .setrow .setno{ font-size:13px; font-weight:600; color:var(--faint); text-align:center; }
 .setrow .target{ font-size:12.5px; color:var(--muted); line-height:1.2; }
-.setrow input{ border:none; background:var(--surface2); border-radius:10px; min-height:44px; font-size:19px; font-weight:600; font-family:'Big Shoulders','Archivo',system-ui,sans-serif; letter-spacing:.01em; }
+.setrow input{ border:none; background:var(--surface2); border-radius:10px; min-height:44px; font-size:19px; font-weight:600; font-family:var(--mono); letter-spacing:.01em; }
 .setrow input[data-field="rpe"]{ font-size:16px; font-family:inherit; font-weight:500; }
 .setrow input::placeholder{ color:var(--faint); opacity:.8; font-weight:500; }
 .setrow input:focus{ outline:none; box-shadow:0 0 0 2px var(--accent); }
@@ -520,7 +585,7 @@ table.hist th{ text-transform:none; letter-spacing:0; font-size:12px; }
 .pstack{ display:flex; align-items:center; }
 .plist{ display:flex; flex-direction:column; gap:8px; }
 .prow{ display:flex; justify-content:space-between; align-items:baseline; font-size:17px; }
-.prow b{ font-family:'Big Shoulders',system-ui,sans-serif; font-size:26px; font-weight:700; }
+.prow b{ font-family:var(--serif); font-size:26px; font-weight:700; }
 .plhead{ display:flex; justify-content:space-between; align-items:center; }
 .bxrow{ display:grid; grid-template-columns:1fr 54px 92px 34px; gap:6px; align-items:center; }
 .bxrow input, .bfield input[type=text]{ background:var(--surface2); border:none; color:var(--fg); border-radius:10px; padding:10px 8px; min-height:44px; width:100%; font-size:16px; }
@@ -538,7 +603,7 @@ table.hist th{ text-transform:none; letter-spacing:0; font-size:12px; }
 .setline .exname{ font-family:'Archivo',system-ui,sans-serif; font-size:16px; font-weight:600; text-transform:none; letter-spacing:0; }
 .wkday{ display:flex; flex-direction:column; gap:3px; padding:6px 0; }
 .wkrow{ display:grid; grid-template-columns:34px 1fr 92px; gap:10px; align-items:center; font-size:14px; }
-.wkd{ font-weight:700; font-family:'Big Shoulders',system-ui,sans-serif; font-size:17px; letter-spacing:.03em; }
+.wkd{ font-weight:700; font-family:var(--serif); font-size:17px; letter-spacing:.03em; }
 .wkv{ text-align:right; color:var(--muted); font-size:13px; white-space:nowrap; }
 .wkv b{ color:var(--fg); font-size:15px; }
 .wkf{ color:var(--muted); font-size:12.5px; padding-left:44px; }
@@ -549,10 +614,20 @@ table.hist th{ text-transform:none; letter-spacing:0; font-size:12px; }
 #gate{ position:fixed; inset:0; bottom:calc(0px - var(--vgap,0px)); padding-top:env(safe-area-inset-top,0px); z-index:100; background:var(--bg); display:none; align-items:center; justify-content:center; padding:24px; }
 .gatebox{ display:flex; flex-direction:column; align-items:center; gap:14px; text-align:center; max-width:320px; }
 #gateLogo .clogo{ width:72px; height:72px; }
-.gatetitle{ font-family:"Big Shoulders",sans-serif; font-weight:700; font-size:40px; letter-spacing:.08em; text-transform:uppercase; color:var(--fg); }
+.gatetitle{ font-family:var(--serif); font-weight:700; font-size:40px; letter-spacing:.08em; text-transform:uppercase; color:var(--fg); }
 .gatesub{ color:var(--muted); font-size:15px; }
 .gatebtn{ background:var(--accent); color:var(--accent-fg); border:0; border-radius:10px; padding:14px 20px; font:600 16px Archivo,sans-serif; min-height:48px; }
 .gateerr{ color:var(--bad); font-size:13px; min-height:18px; }
+
+.ready,.ready.green,.ready.yellow,.ready.red{ border:0 !important; border-top:2px solid var(--fg) !important; border-radius:0 !important; background:transparent !important; box-shadow:none !important; padding:10px 0 12px !important; }
+.ready.green{ border-top-color:var(--good) !important; } .ready.yellow{ border-top-color:var(--yellow) !important; } .ready.red{ border-top-color:var(--bad) !important; }
+.rtitle{ font-size:19px; text-transform:none !important; letter-spacing:0 !important; }
+.ropt,.rbtn2{ border-radius:0 !important; background:transparent !important; border:1.5px solid var(--line) !important; }
+.ropt.on{ background:var(--accent) !important; border-color:var(--accent) !important; color:var(--accent-fg) !important; }
+.tabbar{ border-top:2px solid var(--fg) !important; box-shadow:none !important; background:var(--bg) !important; backdrop-filter:none !important; -webkit-backdrop-filter:none !important; }
+.tabbtn{ text-transform:uppercase !important; letter-spacing:.08em !important; font-size:10.5px !important; border-radius:0 !important; }
+.tabbtn.active::before{ border-radius:0 !important; }
+details.fold:not([open]){ padding:10px 0 !important; }
 </style>
 <script src="cairn-db.js"></script>
 </head>
@@ -2122,17 +2197,28 @@ function dateStrAgo(n){ const d=new Date(); d.setDate(d.getDate()-n); return d.g
 function offlineNote(){ return `<div class="offlineflag">Not connected. Entries here will not be saved.</div>`; }
 
 /* ---- settings (per-viewer, stored locally) ---- */
-let settings = { timer:true, sound:true, units:'imperial', theme:'system', accent:'amber', bar:45, plates:[45,35,25,10,5,2.5] };
+let settings = { timer:true, sound:true, units:'imperial', theme:'system', accent:'rust', bar:45, plates:[45,35,25,10,5,2.5] };
 try{ const s = JSON.parse(localStorage.getItem('cairnlabs_settings')||'null'); if (s) settings = Object.assign(settings, s); }catch(e){}
 const ACCENTS = {
-  amber:{ n:'Amber' },
-  ember:{ n:'Ember', d:'#E5654F', l:'#B23A26' },
+  amber:{ n:'Amber', d:'#E0A233', l:'#A6631B' },
+  red:{ n:'Red', d:'#E5665A', l:'#B3382C' },
+  rust:{ n:'Rust', d:'#E0764C', l:'#A8431F' },
+  orange:{ n:'Orange', d:'#F08A3C', l:'#C2570C' },
+  ochre:{ n:'Ochre', d:'#E3B857', l:'#8A6310' },
+  yellow:{ n:'Yellow', d:'#F2D04A', l:'#9A7B00' },
+  moss:{ n:'Moss', d:'#9CBB74', l:'#4B6E2E' },
+  green:{ n:'Green', d:'#5FBF7F', l:'#2F7A45' },
   teal:{ n:'Teal', d:'#4FB3A9', l:'#1F7A72' },
-  steel:{ n:'Steel', d:'#6FA3E0', l:'#2F63A8' },
-  violet:{ n:'Violet', d:'#A98BE0', l:'#6B4BB0' }
+  blue:{ n:'Blue', d:'#6FA3E0', l:'#2F63A8' },
+  slate:{ n:'Slate', d:'#7FA8C8', l:'#2F5F82' },
+  violet:{ n:'Violet', d:'#A98BE0', l:'#6B4BB0' },
+  purple:{ n:'Purple', d:'#C58BE0', l:'#8A3FA0' },
+  pink:{ n:'Pink', d:'#F08AB0', l:'#B8456E' },
+  granite:{ n:'Granite', d:'#A8A192', l:'#5E574B' }
 };
+const ACCENT_ALIAS = { ember:'red', steel:'blue' };
 function applyAccent(){
-  const r = document.documentElement, a = ACCENTS[settings.accent];
+  const r = document.documentElement, a = ACCENTS[ACCENT_ALIAS[settings.accent] || settings.accent];
   if (!a || !a.d){ r.style.removeProperty('--accent'); r.style.removeProperty('--accent-fg'); return; }
   const light = settings.theme === 'light' || (settings.theme !== 'dark' && window.matchMedia && matchMedia('(prefers-color-scheme: light)').matches);
   r.style.setProperty('--accent', light ? a.l : a.d);
@@ -2154,6 +2240,7 @@ function uItem(it){ return Object.assign({}, it, { raw:uTxt(it.raw), reps:uTxt(i
 
 /* ---- sub-view shell ---- */
 function renderSubView(){
+  if (curSub() !== 'settings') settingsPage = 'main';
   const main = document.getElementById('main');
   main.hidden = false;
   const list = SUBS[view];
@@ -4586,7 +4673,23 @@ function drawPushCard(){
     catch(e){ msg(e.message || 'Failed'); }
   };
 }
+let settingsPage = 'main';
+function renderThemePicker(){
+  const main = mainEl();
+  const light = settings.theme === 'light' || (settings.theme !== 'dark' && window.matchMedia && matchMedia('(prefers-color-scheme: light)').matches);
+  const cur = ACCENT_ALIAS[settings.accent] || settings.accent;
+  const stone = (hex) => `<svg viewBox="0 0 100 100" aria-hidden="true" style="--accent:${hex}"><g stroke="var(--bg)" stroke-width="1.6"><ellipse cx="50" cy="69" rx="31" ry="12" style="fill:var(--accent)"/><ellipse cx="48" cy="54" rx="25" ry="11" style="fill:color-mix(in srgb,var(--accent) 84%,#000)"/><ellipse cx="52" cy="40" rx="19" ry="10" style="fill:color-mix(in srgb,var(--accent) 82%,#fff)"/><ellipse cx="49" cy="28" rx="12" ry="8.5" style="fill:color-mix(in srgb,var(--accent) 92%,#000)"/></g></svg>`;
+  main.innerHTML = `
+    <button class="backlink" id="thBack" type="button">‹ SETTINGS</button>
+    <h2 class="thtitle">Theme color</h2>
+    <div class="notes">One color for every stone, button and bar. Light and dark each get the right shade.</div>
+    <div class="tgrid">${Object.entries(ACCENTS).map(([k,a]) => `<button type="button" class="tc ${cur===k?'on':''}" data-th="${k}" aria-label="${a.n}">${stone(light ? a.l : a.d)}<b>${a.n}</b></button>`).join('')}</div>
+    <div class="thprev"><div class="lab">PREVIEW</div><div class="throw"><span class="savebtn thbtn">Keep going</span><div class="thbar"><i></i></div><span class="thchk">✓</span></div></div>`;
+  document.getElementById('thBack').onclick = () => { settingsPage = 'main'; renderSettings(); window.scrollTo(0,0); };
+  main.querySelectorAll('[data-th]').forEach(b => b.onclick = () => { settings.accent = b.dataset.th; saveSettings(); applyAccent(); renderThemePicker(); });
+}
 function renderSettings(){
+  if (settingsPage === 'theme') return renderThemePicker();
   const main = mainEl();
   main.innerHTML = `
     <div class="notes">Timer settings stay on this device.</div>
@@ -4595,56 +4698,48 @@ function renderSettings(){
       <div class="setline"><div><div class="exname">Sound and vibration</div><div class="notes">When the timer ends. iPhones may stay silent on silent mode.</div></div><button class="switch ${settings.sound?'on':''}" id="swSound" aria-label="Sound"></button></div>
       <button class="ghostbtn" id="swTest" style="align-self:flex-start;">Test the timer (5 sec)</button>
     </div>
-    <div class="card" id="pushCard">
-      <div class="exname">Notifications</div>
+    <details class="card fold" id="pushCard"><summary><span><b>Notifications</b><small>Alerts when the app is closed</small></span></summary>
       <div class="notes" id="pushNote"></div>
       <div id="pushBody"></div>
-    </div>
+    </details>
     <div class="card">
       <div class="exname">Appearance</div>
-      <div class="notes">Accent color, then Light or Dark. System follows your iPhone.</div>
-      <div class="rareas" id="accentPick">${Object.entries(ACCENTS).map(([k,a]) => `<button class="swatch ${settings.accent===k?'on':''}" data-accent="${k}" aria-label="${a.n}" style="--sw:${a.d || '#E0A233'}"></button>`).join('')}</div>
+      <button class="linkrow" id="themeOpen" type="button"><span><b>Theme color</b><small>Used on every stone, button and bar</small></span><span class="lv"><i class="dot"></i>${esc((ACCENTS[ACCENT_ALIAS[settings.accent] || settings.accent] || ACCENTS.rust).n)} ›</span></button>
+      <div class="notes">Light or Dark. System follows your iPhone.</div>
       <div class="rareas" id="themePick">${[['system','System'],['light','Light'],['dark','Dark']].map(([k,l]) => `<button class="mpick ${settings.theme===k?'on':''}" data-theme-pick="${k}">${l}</button>`).join('')}</div>
       <button class="ghostbtn" id="prPreview" style="align-self:flex-start;">Preview PR celebration</button>
     </div>
-    <div class="card">
-      <div class="exname">Barbell</div>
+    <details class="card fold"><summary><span><b>Barbell and plates</b><small>For the plate sheet</small></span></summary>
       <div class="notes">Used for the plate sheet when you tap a weight on a lift.</div>
       <div class="rareas" id="barPick">${[35,45,55].map(b => `<button class="mpick ${Number(settings.bar)===b?'on':''}" data-bar="${b}">${b} lb bar</button>`).join('')}</div>
       <div class="notes">Plates you have</div>
       <div class="rareas" id="platePick">${ALL_PLATES.slice().reverse().map(p => `<button class="mpick ${(settings.plates||[]).includes(p)?'on':''}" data-plate="${p}">${p}</button>`).join('')}</div>
-    </div>
+    </details>
     <div class="card">
       <div class="exname">Units</div>
       <div class="notes">Distances in plans and logging. Lifting weights are in lb for now.</div>
       <div class="rareas" id="unitPick"><button class="mpick ${isMetric()?'':'on'}" data-unit="imperial">Miles</button><button class="mpick ${isMetric()?'on':''}" data-unit="metric">Kilometers</button></div>
     </div>
-    <div class="card">
-      <div class="exname">Backup</div>
+    <details class="card fold"><summary><span><b>Backup</b><small>Export or restore</small></span></summary>
       <div class="notes">Your data lives in your own database. Export a copy any time, or restore one.</div>
       <div class="rbtns"><button class="ghostbtn" id="bkExport">Export backup</button><button class="ghostbtn" id="bkImport">Import backup</button><button class="ghostbtn" id="bkCsv">Export CSV</button></div>
       <input type="file" id="bkFile" accept="application/json,.json" hidden>
       <div class="notes" id="bkMsg"></div>
-    </div>
-    <div class="card">
-      <div class="exname">Display info</div>
+    </details>
+    <details class="card fold"><summary><span><b>Display info</b></span></summary>
       <div class="notes" id="dispInfo" style="white-space:pre-line;font-variant-numeric:tabular-nums;"></div>
       <button class="ghostbtn" id="dispRefresh" style="align-self:flex-start;">Refresh</button>
-    </div>
-    <div class="card">
-      <div class="exname">Account</div>
+    </details>
+    <details class="card fold"><summary><span><b>Account</b></span></summary>
       <div class="notes" id="acctLine"></div>
       <button class="ghostbtn" id="acctOut" style="align-self:flex-start;">Sign out</button>
-    </div>
+    </details>
     <div class="card">
       <div class="exname">Cairn</div>
       <div class="notes">A cairn is a stack of stones that marks the trail. Each logged set is another stone.</div>
     </div>`;
   document.getElementById('swTimer').onclick = (e) => { settings.timer = !settings.timer; saveSettings(); e.currentTarget.classList.toggle('on', settings.timer); };
-  document.querySelectorAll('[data-accent]').forEach(b => b.onclick = () => {
-    settings.accent = b.dataset.accent; saveSettings(); applyAccent();
-    document.querySelectorAll('[data-accent]').forEach(x => x.classList.toggle('on', x === b));
-  });
+  document.getElementById('themeOpen').onclick = () => { settingsPage = 'theme'; renderSettings(); window.scrollTo(0,0); };
   document.querySelectorAll('[data-theme-pick]').forEach(b => b.onclick = () => {
     settings.theme = b.dataset.themePick; saveSettings(); applyTheme();
     document.querySelectorAll('[data-theme-pick]').forEach(x => x.classList.toggle('on', x === b));
