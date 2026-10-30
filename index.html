@@ -1524,6 +1524,24 @@ function trailStats(docs){
   s.streak = best; s.workouts = s.days.size;
   return s;
 }
+function cardioFams(rows, s, F){
+  const mi = (x) => Number(x.mi) || 0, sum = (a) => a.reduce((t, x) => t + mi(x), 0), of = (k) => rows.filter(x => x.kind === k);
+  const du = () => isMetric() ? 'km' : 'mi', cv = (v) => trimNum(isMetric() ? v * 1.609344 : v);
+  const days = new Set(rows.map(x => x.date)), act = new Set([...(s.days || []), ...days]);
+  const mins = rows.reduce((t, x) => t + (Number(x.min) || 0), 0);
+  const mx = (a) => Math.max(0, ...a.map(mi));
+  return [
+    F('Cardio','cdist','Cardio distance', sum(rows), [10,25,50,100,250,500,1000,2500], cv, du(), 'Every run, ride, swim and hike you log.'),
+    F('Cardio','crun','Running', sum(of('run')), [10,25,50,100,250,500,1000], cv, du()),
+    F('Cardio','lrun','Longest run', mx(of('run')), [1,3.1,6.2,10,13.1,18,26.2], cv, du()),
+    F('Cardio','cbike','Cycling', sum(of('bike')), [25,100,250,500,1000,2500], cv, du()),
+    F('Cardio','lbike','Longest ride', mx(of('bike')), [10,25,50,75,100], cv, du()),
+    F('Cardio','cswim','Swimming', sum(of('swim')), [1,5,10,25,50,100], cv, du()),
+    F('Cardio','ctime','Cardio time', mins / 60, [1,5,10,25,50,100,250], (v) => v.toFixed(1), 'hours'),
+    F('Cardio','cdays','Cardio days', days.size, [1,10,25,50,100,200], (v) => String(Math.round(v)), 'days'),
+    F('Consistency','actd','Active days', act.size, [1,10,25,50,100,200,365], (v) => String(Math.round(v)), 'days', 'Any day with a lift or a cardio session.')
+  ];
+}
 function trailFamilies(s, ctx){
   const bw = ctx.bw || 0, est = {};
   Object.keys(BIG3).forEach(k => { est[k] = Math.max(Number(ctx.maxes[k]) || 0, Math.round(s.e1[k])); });
@@ -1550,8 +1568,9 @@ function trailFamilies(s, ctx){
     F('Records','prs','Personal records', s.prs, [1,5,10,25,50], nf, 'PRs'),
     F('Endurance','z2','Zone 2 time', s.zone2 / 60, [5,10,20,50,100], (v) => v.toFixed(1), 'hours'),
     F('Endurance','trail','Hills and rucks', s.trailMin / 60, [2,10,20,50], (v) => v.toFixed(1), 'hours', 'Incline walks, hikes and rucks.'),
-    F('Spartan','burp','Burpees', s.burpees, [100,250,500,1000], nf, 'reps'),
-    F('Spartan','pull','Pull-ups', s.pullups, [50,250,500,1000,2500], nf, 'reps'),
+    ...cardioFams(ctx.cardio || [], s, F),
+    F('Obstacle','burp','Burpees', s.burpees, [100,250,500,1000], nf, 'reps'),
+    F('Obstacle','pull','Pull-ups', s.pullups, [50,250,500,1000,2500], nf, 'reps'),
   ].map(f => { let tier = 0; f.tiers.forEach((x, i) => { if (f.value >= x) tier = i + 1; }); f.tier = tier; return f; });
 }
 async function loadTrail(){
@@ -1562,7 +1581,8 @@ async function loadTrail(){
   const snap = await db.collection('logs').orderBy('date','asc').limit(5000).get();
   const docs = snap.docs.map(d => d.data());
   const stats = trailStats(docs);
-  trailCache = { docs, stats, fams: trailFamilies(stats, { maxes, bw, checkins }) };
+  let cardio = []; try{ cardio = await loadCardio(); }catch(e){}
+  trailCache = { docs, stats, fams: trailFamilies(stats, { maxes, bw, checkins, cardio }) };
   return trailCache;
 }
 const trailSeen = () => { try{ return JSON.parse(localStorage.getItem('cairnlabs_trail') || 'null'); }catch(e){ return null; } };
@@ -1756,7 +1776,7 @@ async function drawCardioCard(){
     ${mine.length ? mine.map(c => `<div class="crow"><span>${cardioLine(c)}</span><button class="rtx" data-cdel="${esc(c.id)}" aria-label="Delete session">✕</button></div>`).join('') : '<div class="notes">Optional. Log a run, ride, swim or hike and race trails pick it up.</div>'}
     <div class="rbtns"><button class="ghostbtn" id="cardioAdd">+ Add cardio</button></div></div>`;
   document.getElementById('cardioAdd').onclick = () => openCardioSheet(date);
-  el2.querySelectorAll('[data-cdel]').forEach(b => b.onclick = async () => { try{ await db.collection('cardio').doc(b.dataset.cdel).delete(); }catch(e){ console.warn(e); } await loadCardio(true); drawCardioCard(); if (view === 'progress' && curSub() === 'cardio') renderCardioPage(); });
+  el2.querySelectorAll('[data-cdel]').forEach(b => b.onclick = async () => { try{ await db.collection('cardio').doc(b.dataset.cdel).delete(); }catch(e){ console.warn(e); } trailCache = null; await loadCardio(true); drawCardioCard(); if (view === 'progress' && curSub() === 'cardio') renderCardioPage(); });
 }
 function openCardioSheet(date){
   let kind = 'run';
@@ -1781,7 +1801,7 @@ function openCardioSheet(date){
     const doc = { date, kind, mi: Math.round(mi * 1000) / 1000, min: Math.round(min * 100) / 100, createdAt: new Date().toISOString() };
     if (hr) doc.hr = hr; if (note) doc.note = note;
     try{ await db.collection('cardio').doc(date + '__' + Date.now()).set(doc); }catch(e){ console.warn(e); }
-    await loadCardio(true); closeSheet(); drawCardioCard(); if (view === 'progress' && curSub() === 'cardio') renderCardioPage();
+    trailCache = null; await loadCardio(true); closeSheet(); drawCardioCard(); if (view === 'progress' && curSub() === 'cardio') renderCardioPage();
     if (view === 'progress' && curSub() === 'route') renderRoute(true);
   };
 }
@@ -1804,7 +1824,7 @@ async function renderCardioPage(){
     <div class="lab">RECENT</div>
     ${all.length ? all.slice(0, 25).map(c => `<div class="crow"><span>${fmtDate(c.date)} · ${cardioLine(c)}${c.note ? `<span class="notes"> · ${esc(c.note)}</span>` : ''}</span><button class="rtx" data-cdel="${esc(c.id)}" aria-label="Delete session">✕</button></div>`).join('') : '<div class="notes">Nothing logged yet.</div>'}</div>`;
   document.getElementById('cpAdd').onclick = () => openCardioSheet(todayStr());
-  main.querySelectorAll('[data-cdel]').forEach(b => b.onclick = async () => { try{ await db.collection('cardio').doc(b.dataset.cdel).delete(); }catch(e){ console.warn(e); } renderCardioPage(); });
+  main.querySelectorAll('[data-cdel]').forEach(b => b.onclick = async () => { try{ await db.collection('cardio').doc(b.dataset.cdel).delete(); }catch(e){ console.warn(e); } trailCache = null; renderCardioPage(); });
 }
 
 /* ===== Races: any distance, starter waypoints you can edit, countdown ===== */
@@ -1914,7 +1934,35 @@ function openRaceSheet(existing, done){
 /* ===== Race trail, countdown, generated roadmap ===== */
 function routeChipsHtml(cur, race){
   return ROUTE_LIFTS.map(([i, n]) => `<button class="rtchip ${i===cur?'on':''}" data-rl="${i}">${n}</button>`).join('') +
-    (race ? `<button class="rtchip race ${cur==='race'?'on':''}" data-rl="race">Race</button>` : '');
+    `<button class="rtchip ${cur==='cardio'?'on':''}" data-rl="cardio">Cardio</button>` + (race ? `<button class="rtchip race ${cur==='race'?'on':''}" data-rl="race">Race</button>` : '');
+}
+let cardioSport = 'any';
+const CARDIO_TIERS = [10,25,50,100,250,500,1000,2500,5000];
+async function renderCardioRoute(main, race, d, quiet){
+  const keepY = window.scrollY, cardio = await loadCardio();
+  if (curSub() !== 'route') return;
+  const rows = cardio.filter(x => cardioSport === 'any' || x.kind === cardioSport);
+  const val = rows.reduce((t, x) => t + (Number(x.mi) || 0), 0);
+  const label = (v) => fmtDist(v).replace(' ', '\u00A0');
+  const upto = CARDIO_TIERS.filter(t => t <= val), next = CARDIO_TIERS.find(t => t > val);
+  const shown = upto.slice(-4), tiers = next ? [...shown, next] : shown;
+  const hit = !next, k = shown.length;
+  const lo = shown.length ? shown[shown.length - 1] : 0, frac = hit ? 1 : Math.max(0, Math.min(1, (val - lo) / ((next || 1) - lo)));
+  const pts = tiers.map(t => ({ label: label(t) }));
+  const sports = [['any','All'],['run','Run'],['bike','Bike'],['swim','Swim']];
+  const noun = { any:'cardio', run:'running', bike:'cycling', swim:'swimming' }[cardioSport];
+  const svg = pts.length > 1 ? routeSvg({ pts, k, frac, goalHit: hit, endWord: next ? ' NEXT' : '', youLabel: 'YOU ' + label(val), label: noun + ' trail' }) : '';
+  main.innerHTML = `<div class="rt"><div class="rtchips">${routeChipsHtml('cardio', !!race)}</div>
+    <h2 class="rttitle">Cardio trail</h2>
+    <div class="notes">A cairn for each distance milestone of ${noun} you log. Pick a sport to follow just that one.</div>
+    <div class="rtchips" style="margin-top:8px;">${sports.map(([k2, n]) => `<button class="rtchip ${k2===cardioSport?'on':''}" data-cs="${k2}">${n}</button>`).join('')}</div>
+    <div class="sum"><div><span>TOTAL ${noun.toUpperCase()}</span><b>${fmtDist(val)}</b></div><div><span>NEXT CAIRN</span><b>${next ? fmtDist(next) : 'All built'}</b></div><div><span>TO GO</span><b>${next ? fmtDist(next - val) : '-'}</b></div></div>
+    ${val > 0 ? svg : '<div class="notes" style="margin:14px 0;">Nothing logged yet. Log a session on Train or here and your trail starts.</div>'}
+    <div class="rbtns" style="margin-top:12px;"><button class="ghostbtn" id="rcLog">+ Log cardio</button></div></div>`;
+  if (quiet) window.scrollTo(0, keepY);
+  main.querySelectorAll('[data-rl]').forEach(b => b.onclick = () => { routeLift = b.dataset.rl; renderRoute(); });
+  main.querySelectorAll('[data-cs]').forEach(b => b.onclick = () => { cardioSport = b.dataset.cs; renderRoute(true); });
+  document.getElementById('rcLog').onclick = () => openCardioSheet(todayStr());
 }
 async function renderRaceRoute(main, race, d, quiet){
   const keepY = window.scrollY;
@@ -2036,6 +2084,7 @@ function routeSvg(o){
   else {
     s += `<circle cx="${you[0]}" cy="${you[1]}" r="9" fill="var(--bg)" stroke="var(--accent)" stroke-width="2.5"/><circle cx="${you[0]}" cy="${you[1]}" r="3.5" fill="var(--accent)"/>`;
     if (o.frac < .2) s += `<text x="${you[0]}" y="${you[1]-28}" text-anchor="middle" style="font-weight:700;fill:var(--accent)">${o.youLabel}</text>`;
+    else if (o.frac >= .6) s += `<text x="${you[0]}" y="${you[1]+30}" text-anchor="middle" style="font-weight:700;fill:var(--accent)">${o.youLabel}</text>`;
     else { const lft = you[0] < W/2; s += `<text x="${lft ? you[0]+16 : you[0]-16}" y="${you[1]+4}" text-anchor="${lft?'start':'end'}" style="font-weight:700;fill:var(--accent)">${o.youLabel}</text>`; }
   }
   return s + '</svg>';
@@ -2053,6 +2102,7 @@ async function renderRoute(quiet){
   try{ const t = await db.doc('state/trail').get(); if (t.exists) custom = (t.data() && t.data().custom) || {}; }catch(e){}
   try{ d = await loadTrail(); }catch(e){ main.innerHTML = '<div class="notes">Could not load your logs.</div>'; return; }
   if (curSub() !== 'route') return;
+  if (routeLift === 'cardio'){ await renderCardioRoute(main, race, d, quiet); return; }
   if (routeLift === 'race'){ await renderRaceRoute(main, race, d, quiet); return; }
   const [id, name, gkey] = ROUTE_LIFTS.find(x => x[0] === routeLift) || ROUTE_LIFTS[0];
   const fam = d.fams.find(f => f.id === id), goal = Number(goals[gkey]) || 0, val = Math.round(fam.value);
@@ -2112,7 +2162,7 @@ async function renderTrail(){
     const d = await loadTrail(); trailStore(d.fams);
     const earned = d.fams.reduce((n, f) => n + f.tier, 0), total = d.fams.reduce((n, f) => n + f.tiers.length, 0);
     const lb = d.stats.ton;
-    const cats = ['Volume','Strength','Consistency','Records','Endurance','Spartan'];
+    const cats = ['Volume','Strength','Consistency','Records','Endurance','Cardio','Obstacle'];
     document.getElementById('trailBody').innerHTML = `
       <div class="card" id="trailSum" style="cursor:pointer;"><div class="trailsum"><div><div class="recbig tabular">${earned} <span class="notes" style="font-size:13px;font-weight:500;">of ${total} levels</span></div><div class="notes" style="margin-top:6px;">${Math.round(lb).toLocaleString()} lb lifted all time.</div><div class="notes" id="trailFun" style="margin-top:4px;">${compareLb(lb)}</div><div class="notes" style="margin-top:6px;font-size:11px;opacity:.7;">Tap for a different comparison</div></div></div></div>
       ${cats.map(c => `<div class="jlabel" style="margin-top:6px;">${c}</div>` + d.fams.filter(f => f.cat === c).map(f => {
