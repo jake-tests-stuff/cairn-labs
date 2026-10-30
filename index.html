@@ -700,6 +700,22 @@ select.crin{ appearance:none; }
 .wtabs{ display:grid; gap:12px; margin:8px 0 22px; } .wtabs div{ border-top:1.5px solid var(--line); padding-top:9px; display:flex; flex-direction:column; gap:2px; } .wtabs span{ font-size:14px; color:var(--muted); }
 .freezebar{ background:var(--accent); color:var(--accent-fg); font-size:12px; padding:6px 12px; display:flex; justify-content:space-between; align-items:center; }
 .freezebar button{ background:transparent; border:1px solid currentColor; color:inherit; font:inherit; font-size:12px; padding:2px 8px; }
+
+/* quick log */
+.blankday{ padding:22px 16px; text-align:left; }
+.bdq{ font-family:var(--serif); font-size:28px; line-height:1.15; color:var(--fg); margin-bottom:6px; }
+.bdbig{ width:100%; margin-top:14px; flex:none; } .bdalt{ width:100%; margin-top:8px; }
+.exdel{ background:transparent; border:0; color:var(--muted); font-size:16px; padding:2px 6px; line-height:1; }
+.quick .setrow{ grid-template-columns:20px 1fr 64px 54px 36px; } .quick .setrow input[data-field="rpe"]{ display:none; }
+@media (max-width:380px){ .quick .setrow{ grid-template-columns:16px 1fr 56px 48px 34px; } }
+.sheetin > *{ flex-shrink:0; }
+.xpmus{ display:flex; gap:6px; overflow-x:auto; padding:10px 0; -webkit-overflow-scrolling:touch; } .xpmus .rtchip{ flex:none; white-space:nowrap; }
+.xplist{ border-top:1.5px solid var(--fg); }
+.xprow{ width:100%; display:grid; grid-template-columns:1fr auto; gap:2px 10px; text-align:left; background:transparent; border:0; border-bottom:1px solid var(--line); padding:11px 2px; color:var(--fg); font:inherit; }
+.xpn{ font-weight:700; font-size:15px; } .xpn i{ font-style:normal; font-size:11px; color:var(--accent); margin-left:4px; }
+.xpm{ grid-column:1; font-size:12.5px; color:var(--muted); } .xpa{ grid-row:1 / span 2; grid-column:2; align-self:center; font-size:22px; color:var(--accent); width:30px; text-align:center; }
+.xprow.on{ background:color-mix(in srgb,var(--accent) 10%,transparent); }
+.xpmake{ margin-top:14px; }
 </style>
 <script src="cairn-db.js"></script>
 <script>
@@ -818,6 +834,18 @@ function fmtDate(s){
   const dt = new Date(y, m-1, d);
   return dt.toLocaleDateString(undefined, {month:'short', day:'numeric'});
 }
+/* Quick log: the built-in program stays out of the way and every day starts blank. Plans you pick still show up. */
+function ensureQuickDays(){
+  if (!quickMode()) return;
+  WORKOUTS.forEach(w => { if (!w.synthetic) w.planHide = true; });
+  const have = new Set(WORKOUTS.map(w => w.date)), t = todayStr();
+  for (let i = -60; i <= 90; i++){
+    const d = addDaysStr(t, i); if (have.has(d)) continue;
+    WORKOUTS.push({ week:0, day: new Date(d + 'T12:00:00').toLocaleDateString('en-US', { weekday:'short' }), date:d, phase:'', focus:'Training', items:[], synthetic:true, quick:true });
+  }
+  WORKOUTS.sort((a, b) => a.date.localeCompare(b.date));
+}
+const isBlankDay = (w) => quickMode() && !w.items.some(it => it.plan);
 function findTodayIdx(){
   const t = todayStr();
   let idx = WORKOUTS.findIndex(w => w.date === t);
@@ -936,6 +964,7 @@ function showWelcome(){
   draw();
 }
 async function init(){
+  ensureQuickDays();
   curIdx = findTodayIdx();
   renderShell();
   try{
@@ -1198,9 +1227,10 @@ function renderMobility(){
 /* ===== today view ===== */
 function renderDay(){
   const w = WORKOUTS[curIdx];
-  document.getElementById('wkLabel').textContent = w.planLabel ? `Cairn · ${w.planLabel}` : `Cairn · Week ${w.week} · ${w.phase}`;
+  const blank = isBlankDay(w);
+  document.getElementById('wkLabel').textContent = blank ? 'Cairn' : w.planLabel ? `Cairn · ${w.planLabel}` : `Cairn · Week ${w.week} · ${w.phase}`;
   document.getElementById('dayLabel').textContent = w.day;
-  document.getElementById('focusLabel').textContent = `${w.focus} · ${fmtDate(w.date)}`;
+  document.getElementById('focusLabel').textContent = blank ? fmtDate(w.date) : `${w.focus} · ${fmtDate(w.date)}`;
   document.getElementById('prevDay').disabled = curIdx===0;
   document.getElementById('nextDay').disabled = curIdx===WORKOUTS.length-1;
   document.getElementById('todayPill').hidden = (curIdx === findTodayIdx());
@@ -1214,6 +1244,17 @@ function renderDay(){
   const { all } = dayItems();
   const visible = editMode ? all : all.filter(it => !it.hidden);
 
+  main.classList.toggle('quick', quickMode());
+  if (!visible.length && quickMode()){
+    main.innerHTML = `<div class="card blankday"><div class="bdq">What are you training today?</div>
+      <div class="notes">Add the exercises you do as you go. Nothing is planned for you.</div>
+      <button class="savebtn bdbig" id="bdAdd">+ Add exercise</button>
+      <button class="ghostbtn bdalt" id="openTpl">Use a saved workout</button></div><div id="cardioCard"></div>`;
+    drawCardioCard();
+    document.getElementById('bdAdd').onclick = () => openExercisePicker();
+    document.getElementById('openTpl').onclick = openTemplatePicker;
+    return;
+  }
   if (!visible.length){
     main.innerHTML = `<div class="dayempty">${all.length ? 'Everything hidden for today.' : 'Rest day. Nothing scheduled.'}</div><div id="cardioCard"></div>${editMode ? addFormHtml() : ''}`;
     drawCardioCard();
@@ -1224,10 +1265,7 @@ function renderDay(){
   let html = '';
   if (offline) html += `<div class="offlineflag">Not connected — changes here won’t be saved.</div>`;
 
-  html += readinessHtml();
-  html += deloadBannerHtml();
-  html += patternHtml();
-  html += skipBannerHtml();
+  if (!isBlankDay(w)){ html += readinessHtml(); html += deloadBannerHtml(); html += patternHtml(); html += skipBannerHtml(); }
 
   visible.forEach(item => {
     const isPrimary = /PRIMARY/i.test(item.ex);
@@ -1288,13 +1326,13 @@ function renderDay(){
       </div>`;
     }
 
-    const setAdjRow = (editMode && item.sets != null) ? `
+    const setAdjRow = ((editMode || quickMode()) && item.sets != null) ? `
       <div class="setadjrow">
         <span class="setadjlabel">Sets today</span>
         <button class="stepbtn" data-setminus="${item.k}" aria-label="One fewer set">&#8722;</button>
         <span class="setcount tabular">${item.sets}</span>
         <button class="stepbtn" data-setplus="${item.k}" aria-label="One more set">&#43;</button>
-        ${item.baseSets != null && item.sets !== item.baseSets ? `<span class="setadjnote">program: ${item.baseSets}</span>` : ''}
+        ${!item.custom && item.baseSets != null && item.sets !== item.baseSets ? `<span class="setadjnote">program: ${item.baseSets}</span>` : ''}
       </div>` : '';
 
     const editControls = editMode ? `
@@ -1309,7 +1347,7 @@ function renderDay(){
       <div class="card ${isPrimary?'primary':''} ${item.hidden?'cardhidden':''} ${(() => { const s = ssInfo(item.k); return s && s.inGroup ? 'ss' : ''; })()}">
         <div class="exhead">
           <div class="exname">${esc(item.ex)}${logDoc[item.k] && logDoc[item.k].pr ? '<span class="prtag" title="Personal record">PR</span>' : ''}${(() => { const s = ssInfo(item.k); return s && s.inGroup ? '<span class="sstag" title="Superset">SS ' + s.tag + '</span>' : ''; })()}</div>
-          <div class="chips">${chips.join('')}</div>
+          <div class="chips">${chips.join('')}${item.custom && !editMode ? `<button class="exdel" data-exdel="${item.customId}" aria-label="Remove ${esc(item.ex)}">&#10005;</button>` : ''}</div>
         </div>
         ${muscleChips || miniFig ? `<div class="mrow"><div class="mchips">${muscleChips}</div>${miniFig}</div>` : ''}
         ${setAdjRow}
@@ -1321,6 +1359,7 @@ function renderDay(){
   });
 
   if (editMode) html += addFormHtml();
+  else if (quickMode()) html += '<div class="card addcard"><button class="addbtn" id="qAdd">+ Add exercise</button></div>';
 
   html += '<div id="cardioCard"></div>';
   html += finishBarHtml();
@@ -1330,6 +1369,71 @@ function renderDay(){
   wireDayInputs();
   wireToday(); updateCairn();
   if (editMode) wireEditControls();
+  else wireQuick();
+}
+async function removeCustomEx(id){
+  dayEdit.custom = (dayEdit.custom || []).filter(c => c.id !== id);
+  await saveDayEdit();
+  const w = WORKOUTS[curIdx];
+  try{ await db.collection('logs').doc(w.date + '__custom-' + id).delete(); }catch(e){}
+  renderDay();
+}
+function wireQuick(){
+  const qa = document.getElementById('qAdd'); if (qa) qa.onclick = () => openExercisePicker();
+  document.querySelectorAll('[data-setminus]').forEach(b => b.onclick = () => adjustSetCount(b.dataset.setminus, -1));
+  document.querySelectorAll('[data-setplus]').forEach(b => b.onclick = () => adjustSetCount(b.dataset.setplus, 1));
+  document.querySelectorAll('[data-exdel]').forEach(b => b.onclick = () => removeCustomEx(b.dataset.exdel));
+  /* swipe an exercise's title row to the left to remove it */
+  document.querySelectorAll('.card .exhead').forEach(h => {
+    const btn = h.querySelector('[data-exdel]'); if (!btn) return;
+    const card = h.closest('.card'); let x0 = null, y0 = 0, dx = 0;
+    h.addEventListener('touchstart', e => { x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; dx = 0; card.style.transition = 'none'; }, { passive:true });
+    h.addEventListener('touchmove', e => { if (x0 == null) return; dx = e.touches[0].clientX - x0; if (Math.abs(e.touches[0].clientY - y0) > 30) { x0 = null; card.style.transform = ''; return; } if (dx < 0) card.style.transform = 'translateX(' + dx + 'px)'; }, { passive:true });
+    h.addEventListener('touchend', () => { card.style.transition = 'transform .2s'; if (x0 != null && dx < -90){ card.style.transform = 'translateX(-110%)'; setTimeout(() => removeCustomEx(btn.dataset.exdel), 160); } else card.style.transform = ''; x0 = null; });
+  });
+}
+
+/* ===== Add exercise: pick from the library, see what it hits, or make your own ===== */
+function openExercisePicker(){
+  let q = '', mus = '', mk = false, picked = new Set(), made = new Set();
+  const addOne = async (name, muscles) => {
+    const id = 'c' + Date.now() + Math.floor(Math.random() * 99);
+    dayEdit.custom = (dayEdit.custom || []).concat([{ id, ex: name, sets: 3, reps: null, tw: null, muscles: muscles || [] }]);
+    rememberExercise(name, muscles || []);
+    await saveDayEdit(); renderDay();
+  };
+  const list = () => {
+    const ql = q.trim().toLowerCase();
+    let all = allExercises().filter(e => (!mus || e.p.concat(e.s).includes(mus)) && (!ql || e.n.toLowerCase().includes(ql)));
+    all.sort((a, b) => (b.mine ? 1 : 0) - (a.mine ? 1 : 0) || a.n.localeCompare(b.n));
+    return all.slice(0, 60);
+  };
+  const paint = (keep) => {
+    const rows = list();
+    openSheet(`<div class="plhead"><h2 style="font-size:26px;">Add exercise</h2><button class="savebtn rtgo" id="xpDone" style="flex:none;padding:8px 16px;min-height:0;">Done</button></div>
+      <input id="xpQ" class="crin" type="search" placeholder="Search exercises" value="${esc(q)}" autocomplete="off">
+      <div class="xpmus">${['All', ...MUSCLE_TAGS].map(m => `<button type="button" class="rtchip ${(m === 'All' ? !mus : mus === m) ? 'on' : ''}" data-xm="${m}">${m}</button>`).join('')}</div>
+      <div class="xplist">${rows.length ? rows.map(e => `<button type="button" class="xprow ${picked.has(e.n) ? 'on' : ''}" data-xn="${esc(e.n)}"><span class="xpn">${esc(e.n)}${e.mine ? ' <i>yours</i>' : ''}</span><span class="xpm">${esc(e.p.concat(e.s).slice(0, 4).join(' · ') || 'No muscles set')}</span><span class="xpa">${picked.has(e.n) ? '&#10003;' : '+'}</span></button>`).join('') : '<div class="notes" style="padding:12px 0;">No match. Make your own below.</div>'}</div>
+      <div class="xpmake"><div class="lab">CAN'T FIND IT?</div>
+        ${mk ? `<input id="xpName" class="crin" type="text" placeholder="Exercise name" value="${esc(q)}" maxlength="60"><div class="muscpick" id="xpMus" style="margin-top:8px;">${MUSCLE_TAGS.map(m => `<button type="button" class="mpick ${made.has(m) ? 'on' : ''}" data-mm="${m}">${m}</button>`).join('')}</div>
+        <div class="rbtns" style="margin-top:10px;"><button class="savebtn rtgo" id="xpMk">Add my exercise</button><button class="ghostbtn" id="xpMkX">Cancel</button></div>` : '<button class="ghostbtn" id="xpNew">+ Make my own exercise</button>'}</div>`);
+    const qi = document.getElementById('xpQ'); if (keep){ qi.focus(); qi.setSelectionRange(q.length, q.length); }
+    document.getElementById('xpDone').onclick = closeSheet;
+    qi.oninput = (e) => { q = e.target.value; paint(true); };
+    document.querySelectorAll('[data-xm]').forEach(b => b.onclick = () => { mus = b.dataset.xm === 'All' ? '' : b.dataset.xm; paint(); });
+    document.querySelectorAll('[data-xn]').forEach(b => b.onclick = async () => {
+      const name = b.dataset.xn, e = libLookup(name); if (picked.has(name)) return;
+      picked.add(name); await addOne(name, e ? e.p.concat(e.s) : []); paint();
+    });
+    const nw = document.getElementById('xpNew'); if (nw) nw.onclick = () => { mk = true; paint(); };
+    const mx = document.getElementById('xpMkX'); if (mx) mx.onclick = () => { mk = false; made.clear(); paint(); };
+    document.querySelectorAll('[data-mm]').forEach(b => b.onclick = () => { const m = b.dataset.mm; made.has(m) ? made.delete(m) : made.add(m); b.classList.toggle('on'); });
+    const mm = document.getElementById('xpMk'); if (mm) mm.onclick = async () => {
+      const n = document.getElementById('xpName').value.trim(); if (!n) return;
+      await addOne(n, Array.from(made)); picked.add(n); mk = false; made.clear(); q = ''; paint();
+    };
+  };
+  paint();
 }
 
 function addFormHtml(){
@@ -2846,7 +2950,7 @@ function dateStrAgo(n){ const d=new Date(); d.setDate(d.getDate()-n); return d.g
 function offlineNote(){ return `<div class="offlineflag">Not connected. Entries here will not be saved.</div>`; }
 
 /* ---- settings (per-viewer, stored locally) ---- */
-let settings = { timer:true, sound:true, units:'imperial', theme:'system', accent:'rust', bar:45, plates:[45,35,25,10,5,2.5] };
+let settings = { mode:'quick', timer:true, sound:true, units:'imperial', theme:'system', accent:'rust', bar:45, plates:[45,35,25,10,5,2.5] };
 try{ const s = JSON.parse(localStorage.getItem('cairnlabs_settings')||'null'); if (s) settings = Object.assign(settings, s); }catch(e){}
 const ACCENTS = {
   amber:{ n:'Amber', d:'#E0A233', l:'#A6631B' },
@@ -2878,6 +2982,7 @@ function applyTheme(){ const r = document.documentElement; if (settings.theme ==
 applyTheme(); applyAccent();
 function saveSettings(){ try{ localStorage.setItem('cairnlabs_settings', JSON.stringify(settings)); }catch(e){} }
 const isMetric = () => settings.units === 'metric';
+const quickMode = () => settings.mode !== 'program';
 const distUnit = () => isMetric() ? 'km' : 'mi';
 /* Plan text is authored in km and metres. Convert at display time to the chosen units (miles and yards by default). */
 function uTxt(s){
@@ -4747,6 +4852,7 @@ function applyPlanRuns(){
       w.items = w.items.concat(s.items.map(uItem));
     });
   });
+  ensureQuickDays();
   WORKOUTS.sort((a,b) => a.date.localeCompare(b.date));
   const idx = WORKOUTS.findIndex(w => w.date === keepDate);
   curIdx = idx >= 0 ? idx : findTodayIdx();
