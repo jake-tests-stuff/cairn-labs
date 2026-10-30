@@ -4,9 +4,6 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Cairn Labs</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=JetBrains+Mono:wght@400;500;700&family=Archivo:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#14120F">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -24,7 +21,7 @@
   --warn:#E3B857; --bad:#E5665A;
   color-scheme: dark;
   --radius:10px;
-  --serif:'Fraunces', Georgia, serif; --sans:'Archivo', system-ui, -apple-system, sans-serif; --mono:'JetBrains Mono', ui-monospace, Menlo, monospace;
+  --sys:-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, system-ui, sans-serif; --serif:var(--sys); --sans:var(--sys); --mono:var(--sys);
 }
 @media (prefers-color-scheme: light){
   :root:not([data-theme="dark"]){
@@ -720,6 +717,13 @@ select.crin{ appearance:none; }
 .pvweeks{ margin-bottom:8px; } .pvday{ border-top:1.5px solid var(--line); padding:8px 0; } .pvh{ margin-bottom:4px; font-size:14px; } .pvh b{ font-family:var(--serif); font-size:16px; margin-right:6px; }
 .pvit{ display:flex; justify-content:space-between; gap:10px; font-size:13.5px; padding:2px 0; } .pvs{ color:var(--muted); white-space:nowrap; }
 .tabbar{ }
+
+/* phase 4: one plain system font everywhere */
+h1,h2,h3,.exname,.rttitle,.rtitle,.stat .sv,.rt .sum b,.rtbig,.prow b,.bdq,#welcome h1,.wkd,.restbar .rtime,details.fold > summary b,.linkrow b,.tc b,.pvh b,.recbig,.gatetitle{ font-weight:800; letter-spacing:-.012em; }
+.card .exname{ font-weight:700; }
+.gatetitle{ letter-spacing:.06em; }
+input,select,textarea,.tabular,.stat .sv,.rt .sum b,.setrow input{ font-variant-numeric:tabular-nums; }
+.lab,.rt .lab,.rt .sum span,.stat .sl,.ptag,.jlabel,.rtk,.chip{ font-weight:600; }
 </style>
 <script src="cairn-db.js"></script>
 <script>
@@ -873,6 +877,15 @@ function esc(s){
 }
 
 /* combine program items for the current day with hidden/custom/set-count overrides */
+/* Rest for exercises you add: longer for heavy compound lifts, shorter for small isolation work */
+function autoRest(name, muscles){
+  const n = String(name || '').toLowerCase();
+  if (/squat|deadlift|bench press|overhead press|military|barbell row|hip thrust|clean|snatch|good morning|weighted (pull|chin|dip)|rack pull/.test(n)) return '3 min';
+  if (/curl|extension|raise|fly|flye|pushdown|kickback|shrug|calf|crunch|plank|wrist|face pull|pull-apart|rotation|twist|stretch|mobility|carry|walk|hang/.test(n)) return '60 sec';
+  if (/row|press|pull-up|chin-up|pulldown|lunge|split squat|step-up|dip|push-up|leg press|rdl|romanian|thrust|swing|burpee|sled/.test(n)) return '2 min';
+  const m = muscles || []; const big = m.filter(x => /Quads|Glutes|Back|Hamstrings|Chest/.test(x)).length;
+  return big >= 2 ? '2 min' : big === 1 ? '90 sec' : '60 sec';
+}
 function dayItems(){
   const w = WORKOUTS[curIdx];
   const hidden = new Set(dayEdit.hidden || []);
@@ -897,7 +910,7 @@ function dayItems(){
     return {
       k, ex: c.ex, raw: eff ? `${eff}x${c.reps||''}` : null,
       sets: eff, baseSets: base, reps: c.reps||null, lift:null, pct:null, tw: c.tw ?? null,
-      rpe: c.rpe || null, rest: null, notes: c.notes || null, muscles: c.muscles || [],
+      rpe: c.rpe || null, rest: c.rest || autoRest(c.ex, c.muscles), notes: c.notes || null, muscles: c.muscles || [],
       hidden:false, custom:true, customId: c.id,
     };
   });
@@ -3867,7 +3880,7 @@ async function renderWeekQuick(){
       <div class="stat"><div class="sv tabular">${active}</div><div class="sl">active days</div></div>
       <div class="stat"><div class="sv tabular">${fmtLb(total)}</div><div class="sl">lb lifted</div></div>
       <div class="stat"><div class="sv tabular">${cmi ? fmtDist(cmi).replace(' ', '') : '0'}</div><div class="sl">cardio</div></div></div>
-    <div class="notes">${sets} sets done.${delta == null ? '' : ` ${delta >= 0 ? 'Up' : 'Down'} ${Math.abs(delta)}% in weight lifted from last week.`}</div>
+    <div class="notes">${sets} ${sets === 1 ? 'set' : 'sets'} done.${delta == null ? '' : ` ${delta >= 0 ? 'Up' : 'Down'} ${Math.abs(delta)}% in weight lifted from last week.`}</div>
     <div class="card">${rows}</div>`;
 }
 async function renderWeek(){
