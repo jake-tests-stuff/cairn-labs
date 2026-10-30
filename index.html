@@ -18,18 +18,18 @@
 /* layout concept: sticky day-header + scrollable exercise list + bottom tab bar (thumb reach for gym use) */
 :root{
   --bg:#12110F; --surface:#12110F; --surface2:#1F1D19; --line:#3A362F;
-  --fg:#F3EFE6; --muted:#A8A192; --faint:#8A8476;
+  --fg:#F3EFE6; --muted:#BDB6A7; --faint:#9D9789;
   --accent:#E0764C; --accent-fg:#14120F;
   --good:#8FBF7A; --good-bg:#1D2619;
   --warn:#E3B857; --bad:#E5665A;
   color-scheme: dark;
   --radius:10px;
-  --serif:'Fraunces', Georgia, serif; --mono:'JetBrains Mono', ui-monospace, Menlo, monospace;
+  --serif:'Fraunces', Georgia, serif; --sans:'Archivo', system-ui, -apple-system, sans-serif; --mono:'JetBrains Mono', ui-monospace, Menlo, monospace;
 }
 @media (prefers-color-scheme: light){
   :root:not([data-theme="dark"]){
   --bg:#F3EFE6; --surface:#F3EFE6; --surface2:#E9E3D3; --line:#CFC7B5;
-  --fg:#1B1A17; --muted:#6B655A; --faint:#7A7366;
+  --fg:#1B1A17; --muted:#4F4A40; --faint:#615B50;
   --accent:#A8431F; --accent-fg:#FFFFFF;
   --good:#3F6A2E; --good-bg:#E2E8D6;
   --warn:#8A6310; --bad:#B3382C;
@@ -38,7 +38,7 @@
 }
 :root[data-theme="light"]{
   --bg:#F3EFE6; --surface:#F3EFE6; --surface2:#E9E3D3; --line:#CFC7B5;
-  --fg:#1B1A17; --muted:#6B655A; --faint:#7A7366;
+  --fg:#1B1A17; --muted:#4F4A40; --faint:#615B50;
   --accent:#A8431F; --accent-fg:#FFFFFF;
   --good:#3F6A2E; --good-bg:#E2E8D6;
   --warn:#8A6310; --bad:#B3382C;
@@ -46,7 +46,7 @@
 }
 :root[data-theme="dark"]{
   --bg:#12110F; --surface:#12110F; --surface2:#1F1D19; --line:#3A362F;
-  --fg:#F3EFE6; --muted:#A8A192; --faint:#8A8476;
+  --fg:#F3EFE6; --muted:#BDB6A7; --faint:#9D9789;
   --accent:#E0764C; --accent-fg:#14120F;
   --good:#8FBF7A; --good-bg:#1D2619;
   --warn:#E3B857; --bad:#E5665A;
@@ -58,7 +58,7 @@ html{ height:100%; background:var(--bg); }
 body{ min-height:calc(100% + 2px); min-height:calc(100lvh + 2px); }
 body{
   background:var(--bg); color:var(--fg);
-  font-family:var(--mono);
+  font-family:var(--sans);
   font-size:15px; line-height:1.4;
   padding-left:16px; padding-right:16px;
   display:flex; flex-direction:column;
@@ -336,7 +336,7 @@ main > .notes, .subbody > .notes{ color:var(--muted); font-size:13px; }
 
 
 /* ===== Field Notes look (paper, ink, serif headings, mono labels, ruled rows) ===== */
-body{ font-size:13px; }
+body{ font-size:14px; }
 h1,h2,h3,.card .exname,.recbig,.sv,.rtime,.restbar .rtime,.prow b,.wkd{ text-transform:none !important; letter-spacing:0 !important; font-weight:700 !important; }
 .daytitle h1{ font-size:30px; }
 .card .exname{ font-size:21px !important; }
@@ -661,6 +661,13 @@ details.fold:not([open]){ padding:10px 0 !important; }
 .stat .sv, .recbig{ color:var(--accent); }
 .statrow .stat{ border-top-color:var(--accent) !important; }
 .ready,.ready.green,.ready.yellow,.ready.red{ border-top-color:var(--accent) !important; }
+
+/* readable body text; mono only for labels, numbers and controls */
+button, input, select, textarea, .chip, .tabbar *, .lab, .rtsvg text, .sum span, .stat .sl, .ptag, .jlabel, .brand, .rtk{ font-family:var(--mono); }
+.notes{ font-size:13px; line-height:1.5; }
+.setrow input{ font-family:var(--mono); }
+input, select, textarea{ font-size:16px; }
+.rtin{ font-size:16px; }
 </style>
 <script src="cairn-db.js"></script>
 </head>
@@ -1726,10 +1733,11 @@ function routeSvg(o){
   }
   return s + '</svg>';
 }
-async function renderRoute(){
+async function renderRoute(quiet){
   const main = mainEl();
   if (curSub() !== 'route') return;
-  main.innerHTML = '<div class="rt"><div class="notes">Loading...</div></div>';
+  const keepY = window.scrollY;
+  if (!quiet) main.innerHTML = '<div class="rt"><div class="notes">Loading...</div></div>';
   if (offline || !db){ main.innerHTML = '<div class="notes">Not connected.</div>'; return; }
   let custom = {}, d;
   try{ const g = await db.doc('state/goals').get(); if (g.exists) goals = Object.assign({}, GOAL_DEFAULT, g.data()); }catch(e){}
@@ -1766,7 +1774,8 @@ async function renderRoute(){
     <div class="rtadd"><div class="lab">YOUR TARGETS</div>
       <div class="rtmine">${mine.length ? mine.sort((a,b)=>a-b).map(c => `<span class="chip">${c} lb <button class="rtx" data-rx="${c}" aria-label="Remove ${c}">✕</button></span>`).join('') : '<span class="notes">None yet.</span>'}</div>
       <div class="rtform"><input id="rtT" type="number" inputmode="numeric" placeholder="e.g. 450" class="rtin"><button class="ghostbtn" id="rtAdd">Add a target</button></div></div></div>`;
-  const saveTrail = async (next) => { try{ await db.doc('state/trail').set({ custom: next, updatedAt: new Date().toISOString() }); }catch(e){ console.warn(e); } renderRoute(); };
+  if (quiet) window.scrollTo(0, keepY);
+  const saveTrail = async (next) => { try{ await db.doc('state/trail').set({ custom: next, updatedAt: new Date().toISOString() }); }catch(e){ console.warn(e); } renderRoute(true); };
   main.querySelectorAll('[data-rl]').forEach(b => b.onclick = () => { routeLift = b.dataset.rl; renderRoute(); });
   document.getElementById('rtAdd').onclick = () => {
     const v = Math.round(Number(document.getElementById('rtT').value));
@@ -1778,11 +1787,11 @@ async function renderRoute(){
   const setGoal = async (n) => {
     if (!(n > val)) return;
     try{ await db.doc('state/goals').set(Object.assign({}, goals, { [gkey]: n, updatedAt: new Date().toISOString() })); goals[gkey] = n; }catch(e){ console.warn(e); }
-    renderRoute();
+    renderRoute(true);
   };
   main.querySelectorAll('[data-ng]').forEach(b => b.onclick = () => setGoal(Number(b.dataset.ng)));
   const ngs = document.getElementById('rtNgSave'); if (ngs) ngs.onclick = () => setGoal(Math.round(Number(document.getElementById('rtNg').value)));
-  const kp = document.getElementById('rtKeep'); if (kp) kp.onclick = () => { try{ localStorage.setItem(hitKey, '1'); }catch(e){} renderRoute(); };
+  const kp = document.getElementById('rtKeep'); if (kp) kp.onclick = () => { try{ localStorage.setItem(hitKey, '1'); }catch(e){} renderRoute(true); };
 }
 async function renderTrail(){
   const main = mainEl();
