@@ -1667,7 +1667,7 @@ async function renderGoals(){
     const g = {}; lifts.forEach(([id]) => { const v = document.getElementById('gg_' + id).value; g[goalKey[id]] = v === '' ? null : Number(v); });
     goals = Object.assign({}, goals, g);
     try{ await db.doc('state/goals').set(Object.assign({}, goals, { updatedAt: new Date().toISOString() })); }catch(e){ console.warn(e); }
-    renderGoals();
+    routeCache = null; renderGoals();
   };
 }
 async function renderRecap(){
@@ -1935,10 +1935,10 @@ function openRaceSheet(existing, done){
       collect();
       if (!rs.date){ document.getElementById('rcMsg').textContent = 'Pick the race date.'; return; }
       const doc = { name: rs.name.trim() || raceType(rs.type).name || 'Race', place: rs.place.trim(), date: rs.date, type: rs.type || 'custom', wps: rs.wps, updatedAt: new Date().toISOString() };
-      try{ await db.doc('state/race').set(doc); }catch(e){ console.warn(e); }
+      try{ await db.doc('state/race').set(doc); }catch(e){ console.warn(e); } routeCache = null;
       closeSheet(); if (done) done();
     };
-    const rd = document.getElementById('rcDel'); if (rd) rd.onclick = async () => { try{ await db.doc('state/race').delete(); }catch(e){ console.warn(e); } if (routeLift === 'race') routeLift = 'squat'; closeSheet(); if (done) done(); };
+    const rd = document.getElementById('rcDel'); if (rd) rd.onclick = async () => { try{ await db.doc('state/race').delete(); }catch(e){ console.warn(e); } routeCache = null; if (routeLift === 'race') routeLift = 'squat'; closeSheet(); if (done) done(); };
   };
   paint();
 }
@@ -1948,11 +1948,21 @@ function routeChipsHtml(cur, race){
   return ROUTE_LIFTS.map(([i, n]) => `<button class="rtchip ${i===cur?'on':''}" data-rl="${i}">${n}</button>`).join('') +
     `<button class="rtchip ${cur==='cardio'?'on':''}" data-rl="cardio">Cardio</button>` + (race ? `<button class="rtchip race ${cur==='race'?'on':''}" data-rl="race">Race</button>` : '');
 }
+let routeCache = null, routeTok = 0;
+async function routeInputs(){
+  if (routeCache && Date.now() - routeCache.at < 60000) return routeCache;
+  const [g, t, c, race] = await Promise.all([db.doc('state/goals').get().catch(() => null), db.doc('state/trail').get().catch(() => null), db.doc('state/cardiogoals').get().catch(() => null), loadRace()]);
+  routeCache = { at: Date.now(), race,
+    goals: g && g.exists ? Object.assign({}, GOAL_DEFAULT, g.data()) : null,
+    custom: (t && t.exists && t.data() && t.data().custom) || {},
+    cg: (c && c.exists && c.data()) || {} };
+  return routeCache;
+}
 let cardioSport = 'run', cardioMetric = 'dist';
 const CT = { dist:{ tiers:[10,25,50,100,250,500,1000,2500], defGoal:100, steps:[25,50,100] }, time:{ tiers:[5,10,25,50,100,250,500], defGoal:50, steps:[10,25,50] } };
 async function renderCardioRoute(main, race, d, quiet, custom){
   const keepY = window.scrollY, cardio = await loadCardio();
-  let cg = {}; try{ const r = await db.doc('state/cardiogoals').get(); if (r.exists) cg = r.data() || {}; }catch(e){}
+  const cg = (await routeInputs()).cg;
   if (curSub() !== 'route') return;
   const m = cardioMetric, T = CT[m], key = cardioSport + '_' + m, ckey = 'c_' + key;
   const rows = cardio.filter(x => cardioSport === 'any' || x.kind === cardioSport);
@@ -1992,7 +2002,7 @@ async function renderCardioRoute(main, race, d, quiet, custom){
       <div class="rtform"><input id="rtT" type="number" inputmode="decimal" placeholder="e.g. ${m === 'dist' ? 75 : 40}" class="rtin"><button class="ghostbtn" id="rtAdd">Add a target</button></div></div>
     <div class="rbtns" style="margin-top:12px;"><button class="ghostbtn" id="rcLog">+ Log cardio</button></div></div>`;
   if (quiet) window.scrollTo(0, keepY);
-  const saveTrail = async (nextC) => { try{ await db.doc('state/trail').set({ custom: nextC, updatedAt: new Date().toISOString() }); }catch(e){ console.warn(e); } renderRoute(true); };
+  const saveTrail = async (nextC) => { try{ await db.doc('state/trail').set({ custom: nextC, updatedAt: new Date().toISOString() }); }catch(e){ console.warn(e); } routeCache = null; renderRoute(true); };
   main.querySelectorAll('[data-rl]').forEach(b => b.onclick = () => { routeLift = b.dataset.rl; renderRoute(); });
   main.querySelectorAll('[data-cs]').forEach(b => b.onclick = () => { cardioSport = b.dataset.cs; renderRoute(true); });
   main.querySelectorAll('[data-cm]').forEach(b => b.onclick = () => { cardioMetric = b.dataset.cm; renderRoute(true); });
@@ -2007,7 +2017,7 @@ async function renderCardioRoute(main, race, d, quiet, custom){
   const setGoal = async (n) => {
     if (!(n > val)) return;
     try{ await db.doc('state/cardiogoals').set(Object.assign({}, cg, { [key]: n, updatedAt: new Date().toISOString() })); }catch(e){ console.warn(e); }
-    renderRoute(true);
+    routeCache = null; renderRoute(true);
   };
   main.querySelectorAll('[data-ng]').forEach(b => b.onclick = () => setGoal(Number(b.dataset.ng)));
   const ngs = document.getElementById('rtNgSave'); if (ngs) ngs.onclick = () => setGoal(Number(document.getElementById('rtNg').value));
@@ -2042,7 +2052,7 @@ async function renderRaceRoute(main, race, d, quiet){
   main.querySelectorAll('[data-wm]').forEach(b => b.onclick = async () => {
     const w = race.wps[Number(b.dataset.wm)]; w.done = !w.done;
     try{ await db.doc('state/race').set(Object.assign({}, race, { updatedAt: new Date().toISOString() })); }catch(e){ console.warn(e); }
-    renderRoute(true);
+    routeCache = null; renderRoute(true);
   });
 }
 const RM_TEXT = {
@@ -2142,15 +2152,14 @@ async function renderRoute(quiet){
   const main = mainEl();
   if (curSub() !== 'route') return;
   const keepY = window.scrollY;
-  if (!quiet) main.innerHTML = '<div class="rt"><div class="notes">Loading...</div></div>';
+  if (!quiet && !(routeCache && trailCache)) main.innerHTML = '<div class="rt"><div class="notes">Loading...</div></div>';
   if (offline || !db){ main.innerHTML = '<div class="notes">Not connected.</div>'; return; }
+  const tok = ++routeTok;
   let custom = {}, d, race = null;
-  const gP = db.doc('state/goals').get().catch(() => null), tP = db.doc('state/trail').get().catch(() => null), rP = loadRace(), dP = loadTrail().catch(() => null);
-  race = await rP;
+  const dP = loadTrail().catch(() => null), inp = await routeInputs();
+  race = inp.race; custom = inp.custom; if (inp.goals) goals = inp.goals;
   if (routeLift === 'race' && !race) routeLift = 'squat';
-  const g = await gP; if (g && g.exists) goals = Object.assign({}, GOAL_DEFAULT, g.data());
-  const t = await tP; if (t && t.exists) custom = (t.data() && t.data().custom) || {};
-  d = await dP; if (!d){ main.innerHTML = '<div class="notes">Could not load your logs.</div>'; return; }
+  d = await dP; if (tok !== routeTok) return; if (!d){ main.innerHTML = '<div class="notes">Could not load your logs.</div>'; return; }
   if (curSub() !== 'route') return;
   if (routeLift === 'cardio'){ await renderCardioRoute(main, race, d, quiet, custom); return; }
   if (routeLift === 'race'){ await renderRaceRoute(main, race, d, quiet); return; }
@@ -2185,7 +2194,7 @@ async function renderRoute(quiet){
       <div class="rtmine">${mine.length ? mine.sort((a,b)=>a-b).map(c => `<span class="chip">${c} lb <button class="rtx" data-rx="${c}" aria-label="Remove ${c}">✕</button></span>`).join('') : '<span class="notes">None yet.</span>'}</div>
       <div class="rtform"><input id="rtT" type="number" inputmode="numeric" placeholder="e.g. 450" class="rtin"><button class="ghostbtn" id="rtAdd">Add a target</button></div></div></div>`;
   if (quiet) window.scrollTo(0, keepY);
-  const saveTrail = async (next) => { try{ await db.doc('state/trail').set({ custom: next, updatedAt: new Date().toISOString() }); }catch(e){ console.warn(e); } renderRoute(true); };
+  const saveTrail = async (next) => { try{ await db.doc('state/trail').set({ custom: next, updatedAt: new Date().toISOString() }); }catch(e){ console.warn(e); } routeCache = null; renderRoute(true); };
   main.querySelectorAll('[data-rl]').forEach(b => b.onclick = () => { routeLift = b.dataset.rl; renderRoute(); });
   document.getElementById('rtAdd').onclick = () => {
     const v = Math.round(Number(document.getElementById('rtT').value));
@@ -2197,7 +2206,7 @@ async function renderRoute(quiet){
   const setGoal = async (n) => {
     if (!(n > val)) return;
     try{ await db.doc('state/goals').set(Object.assign({}, goals, { [gkey]: n, updatedAt: new Date().toISOString() })); goals[gkey] = n; }catch(e){ console.warn(e); }
-    renderRoute(true);
+    routeCache = null; renderRoute(true);
   };
   main.querySelectorAll('[data-ng]').forEach(b => b.onclick = () => setGoal(Number(b.dataset.ng)));
   const ngs = document.getElementById('rtNgSave'); if (ngs) ngs.onclick = () => setGoal(Math.round(Number(document.getElementById('rtNg').value)));
@@ -4420,7 +4429,7 @@ function drawStrength(){
   document.getElementById('glSave').onclick = async () => {
     const v = document.getElementById('gl_'+lift).value, dt = document.getElementById('gl_date').value;
     goals = Object.assign({}, goals, { [lift]: v==='' ? null : Number(v), date: dt || null });
-    try{ await db.doc('state/goals').set(Object.assign({}, goals, { updatedAt: new Date().toISOString() })); }catch(e){ console.warn(e); }
+    routeCache = null; try{ await db.doc('state/goals').set(Object.assign({}, goals, { updatedAt: new Date().toISOString() })); }catch(e){ console.warn(e); }
     drawStrength();
   };
 }
