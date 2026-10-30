@@ -12,6 +12,10 @@
 <meta name="apple-mobile-web-app-title" content="Cairn">
 <meta name="mobile-web-app-capable" content="yes">
 <style>
+@font-face{font-family:'JetBrains Mono';font-weight:400;font-style:normal;font-display:swap;src:url('fonts/jetbrains-mono-latin-400-normal.woff2') format('woff2');}
+@font-face{font-family:'JetBrains Mono';font-weight:500;font-style:normal;font-display:swap;src:url('fonts/jetbrains-mono-latin-500-normal.woff2') format('woff2');}
+@font-face{font-family:'JetBrains Mono';font-weight:700;font-style:normal;font-display:swap;src:url('fonts/jetbrains-mono-latin-700-normal.woff2') format('woff2');}
+
 /* layout concept: sticky day-header + scrollable exercise list + bottom tab bar (thumb reach for gym use) */
 :root{
   --bg:#12110F; --surface:#12110F; --surface2:#1F1D19; --line:#3A362F;
@@ -21,7 +25,7 @@
   --warn:#E3B857; --bad:#E5665A;
   color-scheme: dark;
   --radius:10px;
-  --sys:-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, system-ui, sans-serif; --serif:var(--sys); --sans:var(--sys); --mono:var(--sys);
+  --sys:'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace; --serif:var(--sys); --sans:var(--sys); --mono:var(--sys);
 }
 @media (prefers-color-scheme: light){
   :root:not([data-theme="dark"]){
@@ -719,7 +723,7 @@ select.crin{ appearance:none; }
 .tabbar{ }
 
 /* phase 4: one plain system font everywhere */
-h1,h2,h3,.exname,.rttitle,.rtitle,.stat .sv,.rt .sum b,.rtbig,.prow b,.bdq,#welcome h1,.wkd,.restbar .rtime,details.fold > summary b,.linkrow b,.tc b,.pvh b,.recbig,.gatetitle{ font-weight:800; letter-spacing:-.012em; }
+h1,h2,h3,.exname,.rttitle,.rtitle,.stat .sv,.rt .sum b,.rtbig,.prow b,.bdq,#welcome h1,.wkd,.restbar .rtime,details.fold > summary b,.linkrow b,.tc b,.pvh b,.recbig,.gatetitle{ font-weight:700; letter-spacing:-.02em; }
 .card .exname{ font-weight:700; }
 .gatetitle{ letter-spacing:.06em; }
 input,select,textarea,.tabular,.stat .sv,.rt .sum b,.setrow input{ font-variant-numeric:tabular-nums; }
@@ -996,7 +1000,7 @@ async function init(){
   }catch(e){ db = null; }
   maybeWelcome();
   if (window.CAIRN_FRESH){
-    const bar = document.createElement('div'); bar.className = 'freezebar'; bar.innerHTML = '<span>Fresh preview. Saved on this device only.</span><button id="freshReset">Start over</button>';
+    const bar = document.createElement('div'); bar.className = 'freezebar'; bar.innerHTML = '<span>Fresh preview (this phone only)</span><button id="freshReset">Start over</button>';
     document.body.insertBefore(bar, document.body.firstChild);
     document.getElementById('freshReset').onclick = () => { if (!confirm('Erase this preview and start over?')) return; ['cairnlabs_fresh_db','cairnlabs_welcomed','cairnlabs_settings','cairnlabs_trail'].forEach(k => { try{ localStorage.removeItem(k); }catch(e){} }); location.reload(); };
   }
