@@ -683,8 +683,51 @@ select.crin{ appearance:none; }
 .rctype.on{ border-color:var(--accent); background:color-mix(in srgb,var(--accent) 12%,transparent); }
 .wpform{ border:1.5px solid var(--line); padding:10px; margin-top:8px; display:grid; gap:8px; }
 .rtchip.race{ border-style:dashed; }
+
+/* welcome */
+#welcome{ position:fixed; inset:0; z-index:900; background:var(--bg); overflow-y:auto; -webkit-overflow-scrolling:touch; }
+#welcome .winner{ max-width:440px; margin:0 auto; padding:28px 22px 40px; min-height:100%; box-sizing:border-box; display:flex; flex-direction:column; }
+#welcome h1{ font-family:var(--serif); font-size:34px; line-height:1.1; margin:14px 0 10px; color:var(--fg); }
+#welcome p{ font-size:16px; line-height:1.5; color:var(--fg); margin:0 0 12px; }
+#welcome .wlead{ font-size:19px; color:var(--accent); font-weight:600; }
+#welcome .wlogo{ margin-top:30px; } #welcome .wlogo svg{ width:64px; height:64px; }
+#welcome .wbtn{ margin-top:auto; width:100%; flex:none; } #welcome .wskip{ margin-top:10px; width:100%; }
+.wdots{ display:flex; gap:6px; } .wdots i{ width:22px; height:3px; background:var(--line); } .wdots i.on{ background:var(--accent); }
+.wopts{ display:grid; gap:10px; margin:6px 0 10px; }
+.wopt{ text-align:left; background:transparent; border:1.5px solid var(--line); color:var(--fg); font:inherit; padding:14px; border-radius:0; display:flex; flex-direction:column; gap:3px; }
+.wopt b{ font-size:17px; } .wopt span{ font-size:13px; color:var(--muted); }
+.wopt.on{ border-color:var(--accent); background:color-mix(in srgb,var(--accent) 12%,transparent); }
+.wtabs{ display:grid; gap:12px; margin:8px 0 22px; } .wtabs div{ border-top:1.5px solid var(--line); padding-top:9px; display:flex; flex-direction:column; gap:2px; } .wtabs span{ font-size:14px; color:var(--muted); }
+.freezebar{ background:var(--accent); color:var(--accent-fg); font-size:12px; padding:6px 12px; display:flex; justify-content:space-between; align-items:center; }
+.freezebar button{ background:transparent; border:1px solid currentColor; color:inherit; font:inherit; font-size:12px; padding:2px 8px; }
 </style>
 <script src="cairn-db.js"></script>
+<script>
+/* Fresh preview: ?fresh=1 swaps the cloud database for an empty one kept only on this device. ?fresh=0 turns it off. */
+(function(){
+  try{ const q = new URLSearchParams(location.search); if (q.get('fresh') === '1') localStorage.setItem('cairnlabs_fresh','1'); if (q.get('fresh') === '0'){ localStorage.removeItem('cairnlabs_fresh'); localStorage.removeItem('cairnlabs_fresh_db'); } }catch(e){}
+  let on = false; try{ on = localStorage.getItem('cairnlabs_fresh') === '1'; }catch(e){}
+  window.CAIRN_FRESH = on;
+  if (!on) return;
+  document.title = 'Cairn Fresh';
+  let store = new Map(); try{ const o = JSON.parse(localStorage.getItem('cairnlabs_fresh_db') || '{}'); Object.keys(o).forEach(k => store.set(k, o[k])); }catch(e){}
+  const subs = [];
+  const persist = () => { try{ const o = {}; store.forEach((v, k) => { o[k] = v; }); localStorage.setItem('cairnlabs_fresh_db', JSON.stringify(o)); }catch(e){} subs.slice().forEach(f => setTimeout(f, 0)); };
+  const clone = (x) => JSON.parse(JSON.stringify(x));
+  const mk = (path) => ({ id: path.split('/').pop(), exists: store.has(path), data: () => store.has(path) ? clone(store.get(path)) : undefined });
+  const inColl = (c) => [...store.keys()].filter(k => k.startsWith(c + '/') && k.split('/').length === c.split('/').length + 1);
+  const cmp = { '==':(a,b)=>a===b, '<':(a,b)=>a<b, '<=':(a,b)=>a<=b, '>':(a,b)=>a>b, '>=':(a,b)=>a>=b };
+  const query = (c, wh, ord, lim) => {
+    const run = () => { let ds = inColl(c).map(mk); wh.forEach(([f,o,v]) => { ds = ds.filter(d => { const x = d.data()[f]; return x !== undefined && cmp[o](x, v); }); }); ord.forEach(([f,dir]) => { ds.sort((a,b) => { const x = a.data()[f], y = b.data()[f]; return (x > y ? 1 : x < y ? -1 : 0) * (dir === 'desc' ? -1 : 1); }); }); if (lim) ds = ds.slice(0, lim); return { docs: ds, empty: !ds.length, size: ds.length }; };
+    return { where:(f,o,v) => query(c, wh.concat([[f,o,v]]), ord, lim), orderBy:(f,d) => query(c, wh, ord.concat([[f,d||'asc']]), lim), limit:(n) => query(c, wh, ord, n), get: async () => run(), onSnapshot: (cb) => { const f = () => cb(run()); subs.push(f); setTimeout(f, 0); return () => { const i = subs.indexOf(f); if (i > -1) subs.splice(i, 1); }; } };
+  };
+  const docRef = (path) => ({ id: path.split('/').pop(), path, get: async () => mk(path), set: async (d) => { store.set(path, clone(d)); persist(); }, update: async (d) => { store.set(path, Object.assign({}, store.get(path), clone(d))); persist(); }, delete: async () => { store.delete(path); persist(); },
+    onSnapshot: (cb) => { const f = () => cb(mk(path)); subs.push(f); setTimeout(f, 0); return () => { const i = subs.indexOf(f); if (i > -1) subs.splice(i, 1); }; }, collection: (c) => collRef(path + '/' + c) });
+  const collRef = (c) => Object.assign(query(c, [], [], 0), { doc: (id) => docRef(c + '/' + (id || ('a' + Date.now() + Math.random().toString(36).slice(2, 6)))), add: async (d) => { const r = docRef(c + '/a' + Date.now() + Math.random().toString(36).slice(2, 6)); await r.set(d); return r; } });
+  window.cairnDb = async () => ({ doc: docRef, collection: collRef });
+  window.cairnToken = async () => 't';
+})();
+</script>
 </head>
 <body>
 <div id="app"></div>
@@ -846,6 +889,52 @@ function ssInfo(key){
 }
 
 /* ===== init ===== */
+/* ===== Welcome: shown once, before anything else ===== */
+async function maybeWelcome(){
+  let force = false; try{ force = new URLSearchParams(location.search).get('welcome') === '1'; }catch(e){}
+  let seen = false; try{ seen = !!localStorage.getItem('cairnlabs_welcomed'); }catch(e){}
+  if (!force){
+    if (seen || !db) return;
+    try{ const r = await db.doc('state/profile').get(); if (r.exists) { try{ localStorage.setItem('cairnlabs_welcomed','1'); }catch(e){} return; } }catch(e){ return; }
+  }
+  showWelcome();
+}
+function showWelcome(){
+  let step = 0, goal = 'both', units = settings.units || 'imperial';
+  const el = document.createElement('div'); el.id = 'welcome'; document.body.appendChild(el);
+  const finish = async (skipped) => {
+    if (!skipped){ settings.units = units; settings.focus = goal; saveSettings(); }
+    try{ localStorage.setItem('cairnlabs_welcomed','1'); }catch(e){}
+    try{ if (db) await db.doc('state/profile').set({ goal, units, skipped: !!skipped, at: new Date().toISOString() }); }catch(e){ console.warn(e); }
+    el.remove(); try{ renderDay(); }catch(e){}
+  };
+  const dots = () => `<div class="wdots">${[0,1,2].map(i => `<i class="${i === step ? 'on' : ''}"></i>`).join('')}</div>`;
+  const draw = () => {
+    let body;
+    if (step === 0) body = `<div class="wlogo">${CAIRN_LOGO || ''}</div><h1>Welcome to Cairn</h1>
+      <p class="wlead">A simple place to log your training.</p>
+      <p>Log a lift or a run. Each session adds a stone to your cairn, and the stones add up over time.</p>
+      <p>That is all you need to do. Everything else is optional and can wait.</p>
+      <button class="savebtn wbtn" id="wNext">Get started</button><button class="ghostbtn wskip" id="wSkip">Skip for now</button>`;
+    else if (step === 1) body = `<h1>What do you train?</h1><p>Pick the closest one. You can change it later.</p>
+      <div class="wopts">${[['lift','Lifting','Strength training with weights'],['run','Running and cardio','Runs, rides, swims and hikes'],['both','Both','A bit of everything']].map(([k, n, d]) => `<button type="button" class="wopt ${goal === k ? 'on' : ''}" data-g="${k}"><b>${n}</b><span>${d}</span></button>`).join('')}</div>
+      <div class="lab">UNITS</div><div class="rtchips"><button class="rtchip ${units !== 'metric' ? 'on' : ''}" data-u="imperial">lb and miles</button><button class="rtchip ${units === 'metric' ? 'on' : ''}" data-u="metric">kg and km</button></div>
+      <button class="savebtn wbtn" id="wNext">Next</button><button class="ghostbtn wskip" id="wBack">Back</button>`;
+    else body = `<h1>You are set</h1><p>Four tabs along the bottom:</p>
+      <div class="wtabs"><div><b>Train</b><span>Today's session. Log sets${goal === 'run' ? '' : ' and weights'}${goal === 'lift' ? '' : ', add a run or ride'}.</span></div>
+      <div><b>Progress</b><span>Your cairns and how far you have come.</span></div>
+      <div><b>Body</b><span>How you feel and what to do when something hurts.</span></div>
+      <div><b>Plan</b><span>Optional. Programs and goals, whenever you want them.</span></div></div>
+      <button class="savebtn wbtn" id="wDone">Start</button><button class="ghostbtn wskip" id="wBack">Back</button>`;
+    el.innerHTML = `<div class="winner">${dots()}${body}</div>`;
+    const on = (id, fn) => { const e = document.getElementById(id); if (e) e.onclick = fn; };
+    on('wNext', () => { step++; draw(); }); on('wBack', () => { step--; draw(); }); on('wSkip', () => finish(true)); on('wDone', () => finish(false));
+    el.querySelectorAll('[data-g]').forEach(b => b.onclick = () => { goal = b.dataset.g; draw(); });
+    el.querySelectorAll('[data-u]').forEach(b => b.onclick = () => { units = b.dataset.u; draw(); });
+    el.scrollTop = 0;
+  };
+  draw();
+}
 async function init(){
   curIdx = findTodayIdx();
   renderShell();
@@ -853,6 +942,12 @@ async function init(){
     window.CAIRN_LOGO = CAIRN_LOGO;
     db = await window.cairnDb();
   }catch(e){ db = null; }
+  maybeWelcome();
+  if (window.CAIRN_FRESH){
+    const bar = document.createElement('div'); bar.className = 'freezebar'; bar.innerHTML = '<span>Fresh preview. Saved on this device only.</span><button id="freshReset">Start over</button>';
+    document.body.insertBefore(bar, document.body.firstChild);
+    document.getElementById('freshReset').onclick = () => { if (!confirm('Erase this preview and start over?')) return; ['cairnlabs_fresh_db','cairnlabs_welcomed','cairnlabs_settings','cairnlabs_trail'].forEach(k => { try{ localStorage.removeItem(k); }catch(e){} }); location.reload(); };
+  }
   if (!db){
     offline = true;
     renderDay();
