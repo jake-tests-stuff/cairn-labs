@@ -878,6 +878,11 @@ function esc(s){
 
 /* combine program items for the current day with hidden/custom/set-count overrides */
 /* Rest for exercises you add: longer for heavy compound lifts, shorter for small isolation work */
+function isBarbellEx(name){
+  const n = String(name || '').toLowerCase();
+  if (/dumbbell|\bdb\b|cable|kettlebell|band|machine|bodyweight|push-up|pull-up|dip\b|goblet|landmine|sled|jump|lunge|split|step-up|curl-up/.test(n) && !/smith/.test(n)) return false;
+  return /barbell|squat|bench press|deadlift|overhead press|military press|\brow\b|hip thrust|good morning|clean|snatch|rack pull|\bohp\b|\bbar\b|smith/.test(n);
+}
 function autoRest(name, muscles){
   const n = String(name || '').toLowerCase();
   if (/squat|deadlift|bench press|overhead press|military|barbell row|hip thrust|clean|snatch|good morning|weighted (pull|chin|dip)|rack pull/.test(n)) return '3 min';
@@ -1292,6 +1297,7 @@ function renderDay(){
     const chips = [];
     if (item.raw) chips.push(`<span class="chip">${esc(item.raw)}</span>`);
     if (tw != null) chips.push(item.lift ? `<button class="chip wt tabular wtbtn" data-plates="${tw}" aria-label="Plates for ${tw} pounds">${tw} lb</button>` : `<span class="chip wt tabular">${tw} lb</span>`);
+    if (!item.lift && isBarbellEx(item.ex) && item.sets) chips.push(`<button class="chip wt wtbtn" data-plates="auto" aria-label="Plate sheet">Plates</button>`);
     if (item.rec) chips.push(`<span class="chip rec">rec ${item.rec.from}&rarr;${item.rec.to} sets</span>`);
     if (tw != null && recScale()<1 && item.pct!=null) chips.push(`<span class="chip rec">&minus;10%</span>`);
     if (item.rpe) chips.push(`<span class="chip">RPE ${esc(item.rpe)}</span>`);
@@ -3490,7 +3496,12 @@ function openPlates(total, choices){
 }
 document.addEventListener('click', (e) => {
   const b = e.target.closest && e.target.closest('[data-plates]'); if (!b) return;
-  const card = b.closest('.card'); const tw = Number(b.dataset.plates);
+  const card = b.closest('.card'); let tw = Number(b.dataset.plates);
+  if (b.dataset.plates === 'auto'){
+    const ins = card ? [...card.querySelectorAll('.setrow input[data-field="w"]')] : [];
+    const have = ins.map(i => Number(i.value)).filter(v => v > 0);
+    tw = have.length ? have[have.length - 1] : (Number(settings.bar) || 45) + 90;
+  }
   const set = new Set([tw]);
   const fam = card ? (card.querySelector('.exname')||{textContent:''}).textContent.trim().split(/\s+/)[0].toLowerCase() : '';
   document.querySelectorAll('#main .card').forEach(c => {
