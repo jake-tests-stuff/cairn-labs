@@ -716,6 +716,10 @@ select.crin{ appearance:none; }
 .xpm{ grid-column:1; font-size:12.5px; color:var(--muted); } .xpa{ grid-row:1 / span 2; grid-column:2; align-self:center; font-size:22px; color:var(--accent); width:30px; text-align:center; }
 .xprow.on{ background:color-mix(in srgb,var(--accent) 10%,transparent); }
 .xpmake{ margin-top:14px; }
+
+.pvweeks{ margin-bottom:8px; } .pvday{ border-top:1.5px solid var(--line); padding:8px 0; } .pvh{ margin-bottom:4px; font-size:14px; } .pvh b{ font-family:var(--serif); font-size:16px; margin-right:6px; }
+.pvit{ display:flex; justify-content:space-between; gap:10px; font-size:13.5px; padding:2px 0; } .pvs{ color:var(--muted); white-space:nowrap; }
+.tabbar{ }
 </style>
 <script src="cairn-db.js"></script>
 <script>
@@ -1131,6 +1135,7 @@ function renderShell(){
       <button class="tabbtn" data-view="progress"><span class="ic"><svg viewBox="0 0 24 24"><path d="M3 19.5h18M4.5 15l4.5-4.5 3.5 3.5L19.5 6.5M15 6.5h4.5V11"/></svg></span>Progress</button>
       <button class="tabbtn" data-view="body"><span class="ic"><svg viewBox="0 0 24 24"><path d="M12 20.5s-7.5-4.4-7.5-10A4.4 4.4 0 0 1 12 7.6a4.4 4.4 0 0 1 7.5 2.9c0 5.6-7.5 10-7.5 10z"/><path d="M7.5 12.5h2.2l1.3-2.5 2 4 1.3-1.5h2.2"/></svg></span>Body</button>
       <button class="tabbtn" data-view="plan"><span class="ic"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg></span>Plan</button>
+      <button class="tabbtn" data-view="me"><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="8.5" r="3.6"/><path d="M5 20c.6-3.8 3.5-5.8 7-5.8s6.4 2 7 5.8"/></svg></span>Me</button>
     </nav>
   `;
   document.getElementById('prevDay').onclick = () => { if (curIdx>0){ curIdx--; editMode=false; showAddForm=false; watchDayLogs(); watchDayEdit(); loadPriorPerf(); renderDay(); } };
@@ -1395,9 +1400,9 @@ function wireQuick(){
 }
 
 /* ===== Add exercise: pick from the library, see what it hits, or make your own ===== */
-function openExercisePicker(){
+function openExercisePicker(onAdd, onDone){
   let q = '', mus = '', mk = false, picked = new Set(), made = new Set();
-  const addOne = async (name, muscles) => {
+  const addOne = onAdd ? async (name, muscles) => { onAdd(name, muscles || []); rememberExercise(name, muscles || []); } : async (name, muscles) => {
     const id = 'c' + Date.now() + Math.floor(Math.random() * 99);
     dayEdit.custom = (dayEdit.custom || []).concat([{ id, ex: name, sets: 3, reps: null, tw: null, muscles: muscles || [] }]);
     rememberExercise(name, muscles || []);
@@ -1419,7 +1424,7 @@ function openExercisePicker(){
         ${mk ? `<input id="xpName" class="crin" type="text" placeholder="Exercise name" value="${esc(q)}" maxlength="60"><div class="muscpick" id="xpMus" style="margin-top:8px;">${MUSCLE_TAGS.map(m => `<button type="button" class="mpick ${made.has(m) ? 'on' : ''}" data-mm="${m}">${m}</button>`).join('')}</div>
         <div class="rbtns" style="margin-top:10px;"><button class="savebtn rtgo" id="xpMk">Add my exercise</button><button class="ghostbtn" id="xpMkX">Cancel</button></div>` : '<button class="ghostbtn" id="xpNew">+ Make my own exercise</button>'}</div>`);
     const qi = document.getElementById('xpQ'); if (keep){ qi.focus(); qi.setSelectionRange(q.length, q.length); }
-    document.getElementById('xpDone').onclick = closeSheet;
+    document.getElementById('xpDone').onclick = () => { if (onDone) onDone(); else closeSheet(); };
     qi.oninput = (e) => { q = e.target.value; paint(true); };
     document.querySelectorAll('[data-xm]').forEach(b => b.onclick = () => { mus = b.dataset.xm === 'All' ? '' : b.dataset.xm; paint(); });
     document.querySelectorAll('[data-xn]').forEach(b => b.onclick = async () => {
@@ -2042,7 +2047,7 @@ async function renderCardioPage(){
 /* ===== Races: any distance, starter waypoints you can edit, countdown ===== */
 const W = (kind, sport, mi, min) => ({ kind, sport, mi, min });
 const RACE_TYPES = [
-  { id:'obstacle', name:'Obstacle race', sub:'Spartan, Tough Mudder, OCR', fam:'obstacle', wps:[ {kind:'hills',hours:2}, {kind:'count',what:'burpees',n:100}, {kind:'long',sport:'run',mi:3}, {kind:'hills',hours:10}, {kind:'count',what:'pullups',n:250}, {kind:'count',what:'burpees',n:250}, {kind:'long',sport:'run',mi:6} ] },
+  { id:'obstacle', name:'Obstacle race', sub:'Mud runs and OCR', fam:'obstacle', wps:[ {kind:'hills',hours:2}, {kind:'count',what:'burpees',n:100}, {kind:'long',sport:'run',mi:3}, {kind:'hills',hours:10}, {kind:'count',what:'pullups',n:250}, {kind:'count',what:'burpees',n:250}, {kind:'long',sport:'run',mi:6} ] },
   { id:'run5k', name:'5K or 10K', sub:'3.1 to 6.2 mi', fam:'run', wps:[ W('long','run',1), W('long','run',2), W('long','run',3.1), W('total','run',25), W('long','run',5), W('long','run',6.2) ] },
   { id:'half', name:'Half marathon', sub:'13.1 mi', fam:'run', wps:[ W('long','run',3), W('total','run',50), W('pace','run',7,60), W('long','run',10), W('total','run',200) ] },
   { id:'marathon', name:'Marathon', sub:'26.2 mi', fam:'run', wps:[ W('long','run',6), W('total','run',100), W('long','run',13.1), W('long','run',18), W('total','run',300), W('long','run',22) ] },
@@ -2731,28 +2736,6 @@ const FLARE = [
     swap:'OHP: swap to landmine press or skip it for the week. Bench: shorten range with a board or pin press, or change grip width slightly. Pull-ups: neutral grip or lat pulldown.',
     fine:'Face pulls and band pull-aparts at light load are usually safe and often help. Keep them in on a shoulder flare day.' }
 ];
-const ROADMAP = [
-  { tag:'Phase 1 · Months 1-3', name:'Strength foundation', when:'Sep to Dec (the current 12 weeks)',
-    str:'Squat/deadlift consolidation, bench progression, full warm-up ramps.',
-    end:'General athleticism (sled, jumps, bounds) and Zone 2 base building. Nothing Beast-specific yet.',
-    goal:'Week 12 test: new squat, bench and deadlift 1RMs.' },
-  { tag:'Phase 2 · Months 4-6', name:'Strength continuation', when:'Jan to Mar',
-    str:'Second 12-week block. Bench goes to 2x per week (one heavy, one lighter and technical) to close the gap toward 405.',
-    end:'Hold the Zone 2 base. Start treating loaded carries as a skill to build.',
-    goal:'Re-test maxes at the end of Month 6.' },
-  { tag:'Phase 3 · Months 7-9', name:'Transition and build', when:'Apr to Jun',
-    str:'Squat, bench and deadlift drop to maintenance: trained weekly, no more max-effort peaking.',
-    end:'Ramp real running volume plus hills and trail. Add rope climb, wall and carry practice.',
-    goal:'A comfortable 5-6 mile trail run with real elevation.' },
-  { tag:'Phase 4 · Months 10-11', name:'OCR peak', when:'Jul to Aug',
-    str:'Pure maintenance: 1-2 sets per lift, once a week, nothing taxing.',
-    end:'Peak running volume. Race-simulation workouts that combine run, carry and climb.',
-    goal:'A comfortable 10+ mile trail run and obstacles that feel routine.' },
-  { tag:'Phase 5 · Final 3-4 weeks', name:'Taper', when:'Before race day',
-    str:'Light maintenance only.',
-    end:'Drop volume, sharpen skills, and consider a shorter tune-up OCR race about a month out.',
-    goal:'Arrive at the start line fresh, not fatigued.' }
-];
 const BENCH_TESTS = [
   { id:'broad', name:'Standing broad jump', unit:'in', kind:'num', better:'higher',
     how:'Two-foot takeoff and landing. Measure the distance. Best of 3 tries.' },
@@ -2840,19 +2823,6 @@ function planFlareHtml(){
       </details>`).join('')}
     <div class="notes">This is for getting through a session, not for diagnosing anything. If something keeps coming back or gets worse, see a PT or doctor.</div>`;
 }
-function planRoadmapHtml(){
-  return `
-    <div class="notes">The shape of the year toward a Spartan Beast about 12 months out. Strength leads now, and the balance shifts toward running and obstacles as the race gets closer. Each phase gets its own week-by-week program about a month before it starts.</div>
-    ${ROADMAP.map(p => `
-      <div class="card phase ${p.tag.indexOf('Phase 1')===0 ? 'now' : ''}">
-        <div class="ptag">${esc(p.tag)}</div>
-        <div class="exhead"><div class="exname">${esc(p.name)}</div><span class="chip">${esc(p.when)}</span></div>
-        <div class="row2"><div class="jlabel">Strength</div><div class="jtext">${esc(p.str)}</div></div>
-        <div class="row2"><div class="jlabel">Endurance and OCR</div><div class="jtext">${esc(p.end)}</div></div>
-        <div class="row2"><div class="jlabel">Milestone</div><div class="jtext">${esc(p.goal)}</div></div>
-      </div>`).join('')}
-    <div class="notes">During phases 3 and 4, squat, bench and deadlift numbers will likely plateau or dip slightly. That is the cost of training toward a race, and full strength focus returns once the race is done. Your half marathon and Tough Mudder raise the starting point for the Phase 3 running build, but they do not shorten the timeline.</div>`;
-}
 function planBenchHtml(){
   const z = zoneText();
   return `
@@ -2934,7 +2904,8 @@ function renderMaxes(){
 const SUBS = {
   progress: [['week','Week'],['goals','Goals'],['recap','Recap'],['route','Trail'],['cardio','Cardio'],['history','Lifts'],['records','Records'],['balance','Balance'],['trail','Markers'],['volume','Volume'],['weight','Weight'],['strength','Strength'],['functional','Functional'],['sticking','Bench'],['skips','Skips'],['bench','Tests']],
   body: [['readiness','Readiness'],['flares','Flare-ups'],['flareplan','Flare plan'],['mobility','Mobility']],
-  plan: [['maxes','Maxes'],['roadmap','Roadmap'],['plans','Plans'],['exercises','Exercises'],['settings','Settings']]
+  plan: [['maxes','Maxes'],['roadmap','Roadmap'],['plans','Plans'],['exercises','Exercises']],
+  me: [['settings','Settings'],['account','Account']]
 };
 const PROGRESS_GROUPS = [
   ['Overview', [['week','Week'],['goals','Goals'],['recap','Recap'],['route','Trail'],['trail','Markers']]],
@@ -2942,13 +2913,13 @@ const PROGRESS_GROUPS = [
   ['Body', [['weight','Weight'],['cardio','Cardio'],['balance','Balance'],['functional','Functional']]],
   ['Checks', [['bench','Tests'],['skips','Skips']]],
 ];
-const VIEW_TITLES = { progress:'Progress', body:'Body', plan:'Plan' };
-let subs = { progress:'week', body:'readiness', plan:'maxes' };
+const VIEW_TITLES = { progress:'Progress', body:'Body', plan:'Plan', me:'Me' };
+let subs = { progress:'week', body:'readiness', plan:'maxes', me:'settings' };
 /* Simple view shows the few things most people use. "Show everything" in Settings brings the rest back. */
 const SIMPLE_SUBS = {
   progress: [['route','Trail'],['week','Week'],['cardio','Cardio'],['history','Lifts'],['records','Records'],['weight','Weight'],['goals','Goals']],
   body: [['readiness','Check-in'],['mobility','Mobility'],['flares','Flare-ups']],
-  plan: [['plans','Programs'],['exercises','Exercises'],['settings','Settings']]
+  plan: [['plans','Programs'],['exercises','Exercises']]
 };
 function subList(v){
   if (settings.advanced) return SUBS[v];
@@ -3053,6 +3024,7 @@ function renderSubView(){
   else if (s==='plans') renderPlans();
   else if (s==='exercises') renderExercises();
   else if (s==='settings') renderSettings();
+  else if (s==='account') renderAccount();
 }
 
 function renderBenchSection(){
@@ -4706,8 +4678,8 @@ const r1 = (n) => Math.round(n*10)/10;
 function isDeload(c){ return c.w % 4 === 0; }
 
 const PLAN_LIB = [
-  { id:'spartan_base', name:'Strength + Spartan Base', setting:'Gym + outdoors', weeks:12, mode:'overlay', pick:'extras', opts:[2,3], def:2, race:true,
-    desc:'Keeps your lifting block and adds a long weekly ruck, an easy aerobic day, and optional carries and grip work. Builds the base for a Spartan without taking recovery from the lifts.',
+  { id:'spartan_base', name:'Strength + Endurance Base', setting:'Gym + outdoors', weeks:12, mode:'overlay', pick:'extras', opts:[2,3], def:2, race:true,
+    desc:'Keeps your lifting block and adds a long weekly ruck, an easy aerobic day, and optional carries and grip work. Builds the base for an obstacle race or long event without taking recovery from the lifts.',
     sessions:(c) => {
       const peak = Math.max(4, 0.8*c.km), prog = c.weeks>1 ? (c.w-1)/(c.weeks-1) : 1;
       const ruck = r1(peak*(0.35+0.65*prog)*(isDeload(c)?0.7:1));
@@ -4718,7 +4690,7 @@ const PLAN_LIB = [
         { dow:6, prio:3, focus:'Carries and grip', items:[ LI('Farmer carry',4,'40 m',7,'Heavy but tall posture. Stop before the back rounds.',['Core','Back'],'90 sec'), LI('Suitcase carry',3,'30 m/side',7,'One side at a time. Do not lean.',['Core'],'90 sec'), LI('Dead hang',3,'30-45 s',null,'Shoulders packed, easy breathing.',['Back','Biceps'],'90 sec') ] }
       ];
     } },
-  { id:'spartan_build', name:'Spartan Build', setting:'Gym + outdoors', weeks:12, mode:'replace', pick:'days', opts:[4,5,6], def:5, race:true,
+  { id:'spartan_build', name:'Obstacle Race Build', setting:'Gym + outdoors', weeks:12, mode:'replace', pick:'days', opts:[4,5,6], def:5, race:true,
     desc:'Race-specific block for the final 12 weeks: two maintenance lifts, intervals, easy runs, a long run or ruck, and carries, grip and burpees. Replaces your scheduled workouts on those days.',
     sessions:(c) => {
       const prog = c.weeks>1 ? (c.w-1)/(c.weeks-1) : 1, d = isDeload(c) ? 0.7 : 1;
@@ -4730,11 +4702,11 @@ const PLAN_LIB = [
         { dow:1, prio:3, focus:'Intervals', items:[ CK('Interval run', `${intervals} × ${c.w<6 ? '1' : '2'} min hard`, 'Hills if you can. Hard but controlled, jog or walk 2 min between.', ['Cardio']), CK('Zone 2 cooldown', '10 min', 'Easy jog or walk.', ['Cardio']) ] },
         { dow:3, prio:4, focus:'Easy run', items:[ CK('Zone 2 run', `${capn(Math.round((35+3*(c.w-1))*d),30,60)} min`, 'Conversational pace.', ['Cardio']) ] },
         { dow:2, prio:5, focus:'Upper strength (maintenance)', items:[ LI('Bench press or push-up',3,6,7,null,['Chest','Triceps']), LI('Pull-up',3,'max - 2',7,'Stop two reps short of failure.',['Back','Biceps']), LI('Dumbbell overhead press',2,8,7,null,['Shoulders','Triceps']), LI('Chest-supported row',3,10,7,null,['Back']) ] },
-        { dow:4, prio:6, focus:'Carries, grip, obstacles', items:[ LI('Sandbag carry',4,'40 m',7,'Bear hug or shoulder. Walk, do not run.',['Core','Back'],'90 sec'), LI('Farmer carry',3,'40 m',7,null,['Core','Back'],'90 sec'), LI('Rope or bar hang',3,'30-45 s',null,'Grip practice.',['Back','Biceps'],'90 sec'), LI('Burpees',4,10,null,'The Spartan penalty is 30. Smooth, steady pace.',['Cardio','Chest'],'90 sec') ] }
+        { dow:4, prio:6, focus:'Carries, grip, obstacles', items:[ LI('Sandbag carry',4,'40 m',7,'Bear hug or shoulder. Walk, do not run.',['Core','Back'],'90 sec'), LI('Farmer carry',3,'40 m',7,null,['Core','Back'],'90 sec'), LI('Rope or bar hang',3,'30-45 s',null,'Grip practice.',['Back','Biceps'],'90 sec'), LI('Burpees',4,10,null,'The usual obstacle penalty is 30. Smooth, steady pace.',['Cardio','Chest'],'90 sec') ] }
       ];
     } },
-  { id:'spartan_super', name:'Spartan Super: Hills and Descents', setting:'Gym + outdoors', weeks:12, mode:'replace', pick:'days', opts:[4,5,6], def:5, race:true,
-    desc:'Built for the Michigan Super course: about 1,900 ft of steep climbing and the same amount of descent in under 7 miles. Incline walks, hill repeats, controlled downhill work for the knees and hips, carries and grip. Two maintenance lifts. Start it 12 weeks before race day (Monday Apr 26, 2027 for a July 17 race). The last week is a taper.',
+  { id:'spartan_super', name:'Hills and Descents (Obstacle Course)', setting:'Gym + outdoors', weeks:12, mode:'replace', pick:'days', opts:[4,5,6], def:5, race:true,
+    desc:'Built for a hilly obstacle course: about 1,900 ft of steep climbing and the same amount of descent in under 7 miles. Incline walks, hill repeats, controlled downhill work for the knees and hips, carries and grip. Two maintenance lifts. Start it 12 weeks before race day. The last week is a taper.',
     sessions:(c) => {
       const prog = c.weeks>1 ? (c.w-1)/(c.weeks-1) : 1, last = c.w === c.weeks;
       const d = last ? 0.5 : (isDeload(c) ? 0.7 : 1);
@@ -4750,7 +4722,7 @@ const PLAN_LIB = [
         { dow:1, prio:3, focus:'Hill repeats', items:[ CK('Hill or incline repeats', `${Math.max(3, Math.round(reps*d))} × ${mins} min climb`, 'Steep incline, hard but controlled, hands off the rails. Walk down slowly for the same time between. Stop if a knee or hip pinches.', ['Cardio','Quads','Glutes']), CK('Easy cooldown walk', '10 min', 'Flat and easy.', ['Cardio']) ] },
         { dow:3, prio:4, focus:'Descent and knee prep', items:[ LI('Tempo step-down',3,'8/leg',6,'Three seconds down, no knee caving, light tap with the heel. Use a low box.',['Quads','Glutes'],'90 sec'), LI('Single-leg Romanian deadlift',3,'8/leg',6,'Balance first, load second.',['Hamstrings','Glutes'],'90 sec'), LI('Reverse lunge',2,'8/leg',6,'Slow lowering, short stride.',['Quads','Glutes'],'90 sec'), CK('Slow downhill walk or decline treadmill', `${Math.round(10*d)} min`, 'Short steps, soft knees, control the speed. Start with a gentle slope and add a little each week. Stop at the first sharp knee or hip pain.', ['Quads','Glutes']), MOB(8) ] },
         { dow:2, prio:5, focus:'Upper strength (maintenance)', items:[ LI('Pull-up',3,'max - 2',7,'Stop two reps short of failure. Obstacles are mostly pulling.',['Back','Biceps']), LI('Bench press or push-up',3,6,7,null,['Chest','Triceps']), LI('Chest-supported row',3,10,7,null,['Back']), LI('Dumbbell overhead press',2,8,7,null,['Shoulders','Triceps']) ] },
-        { dow:4, prio:6, focus:'Carries, grip, obstacles', items:[ LI('Bucket or sandbag carry',4,'40 m',7,'Bear hug or shoulder, walk it. The course has bucket, sandbag and Atlas carries.',['Core','Back'],'90 sec'), LI('Farmer carry',3,'40 m',7,null,['Core','Back'],'90 sec'), LI('Rope or towel hang',3,'30-45 s',null,'Grip for the rope climb and monkey bars.',['Back','Biceps'],'90 sec'), LI('Burpees',4,10,null,'The Spartan penalty is 30. Smooth, steady pace.',['Cardio','Core']) ].concat(bench) },
+        { dow:4, prio:6, focus:'Carries, grip, obstacles', items:[ LI('Bucket or sandbag carry',4,'40 m',7,'Bear hug or shoulder, walk it. The course has bucket, sandbag and Atlas carries.',['Core','Back'],'90 sec'), LI('Farmer carry',3,'40 m',7,null,['Core','Back'],'90 sec'), LI('Rope or towel hang',3,'30-45 s',null,'Grip for the rope climb and monkey bars.',['Back','Biceps'],'90 sec'), LI('Burpees',4,10,null,'The usual obstacle penalty is 30. Smooth, steady pace.',['Cardio','Core']) ].concat(bench) },
       ];
     } },
   { id:'travel', name:'Hotel Gym / Travel', setting:'Dumbbells or bodyweight', weeks:1, mode:'replace', pick:'trip', opts:[2,3,4,5], def:3, race:false,
@@ -4959,10 +4931,14 @@ function drawPlans(){
     return `<div class="card"><div class="exhead"><div class="exname">${esc(r.name)}</div><button class="ghostbtn" data-endplan="${esc(r.id)}">End plan</button></div>
       <div class="notes">${today < r.start ? 'Starts ' + fmtDate(r.start) : today > r.end ? 'Finished ' + fmtDate(r.end) : 'Week ' + wk + ' of ' + r.weeks} · ${fmtDate(r.start)} to ${fmtDate(r.end)}${r.mode==='replace' ? ' · replaces scheduled workouts' : ' · added to your lifting'}</div></div>`;
   }).join('');
-  lib.innerHTML = PLAN_LIB.map(p => `
+  const THEMED = new Set(['spartan_base','spartan_build','spartan_super']);
+  const GEN_ORDER = ['home','hypertrophy','powerbuilding','powerlifting','athletic','cardio_base','swim','maintenance','travel'];
+  const gen = PLAN_LIB.filter(p => !THEMED.has(p.id)).sort((a, b) => (GEN_ORDER.indexOf(a.id) + 1 || 99) - (GEN_ORDER.indexOf(b.id) + 1 || 99)), themed = PLAN_LIB.filter(p => THEMED.has(p.id));
+  const planCard = (p) => `
     <div class="card"><div class="exhead"><div class="exname">${esc(p.name)}</div><button class="ghostbtn" data-startplan="${p.id}">Set up</button></div>
       <div class="chips"><span class="chip">${esc(p.setting)}</span><span class="chip">${p.weeks} ${p.weeks===1?'week':'weeks'}</span><span class="chip">${p.mode==='replace' ? 'replaces workouts' : 'adds sessions'}</span></div>
-      <div class="notes">${esc(p.desc)}</div></div>`).join('');
+      <div class="notes">${esc(p.desc)}</div></div>`;
+  lib.innerHTML = '<div class="jlabel" style="margin:4px 0;">General programs</div>' + gen.map(planCard).join('') + '<div class="jlabel" style="margin:12px 0 4px;">Event and themed programs</div>' + themed.map(planCard).join('');
   lib.style.display = 'flex'; lib.style.flexDirection = 'column'; lib.style.gap = '8px';
   act.style.display = 'flex'; act.style.flexDirection = 'column'; act.style.gap = '8px';
   act.querySelectorAll('[data-endplan]').forEach(b => b.onclick = () => endPlan(b.dataset.endplan));
@@ -4980,7 +4956,8 @@ function openPlanSheet(id){
     <div><div class="brand">${CAIRN_LOGO}CAIRN</div><h2 style="font-size:24px;">${esc(p.name)}</h2><div class="notes">${esc(p.desc)}</div></div>
     <div class="bfield"><label for="plStart">Start date${p.pick==='trip' ? '' : ' (a Monday works best)'}</label><input id="plStart" type="date" value="${defStart}"></div>
     ${p.opts.length ? `<div><div class="jlabel">${lab}</div><div class="rareas" id="plOpts">${p.opts.map(n => `<button class="mpick ${n===p.def?'on':''}" data-plopt="${n}" style="min-width:44px;">${n}</button>`).join('')}</div></div>` : ''}
-    ${p.race ? `<div><div class="jlabel">Race distance</div><div class="rareas" id="plKm">${[[5,'5K'],[10,'10K'],[21,'Half / Beast']].map(([k,l]) => `<button class="mpick ${k===10?'on':''}" data-plkm="${k}">${l}</button>`).join('')}</div><div class="notes">Long runs and rucks scale to this distance. 10K is the default.</div></div>` : ''}
+    ${p.race ? `<div><div class="jlabel">Race distance</div><div class="rareas" id="plKm">${[[5,'5K'],[10,'10K'],[21,'Half / long course']].map(([k,l]) => `<button class="mpick ${k===10?'on':''}" data-plkm="${k}">${l}</button>`).join('')}</div><div class="notes">Long runs and rucks scale to this distance. 10K is the default.</div></div>` : ''}
+    <details class="card fold" id="plPrevWrap"><summary><span><b>Preview the workouts</b><small>See what each week includes</small></span></summary><div id="plPrev"></div></details>
     <div class="notes" id="plWarn"></div>
     <button class="savebtn" id="plGo">Start plan</button>
     <button class="ghostbtn" id="plCancel">Cancel</button>`);
@@ -4989,6 +4966,21 @@ function openPlanSheet(id){
   if (active.length) warn.textContent = 'Starting this ends your current plan (' + active.map(r => r.name).join(', ') + '). Logged sets stay.';
   document.querySelectorAll('[data-plopt]').forEach(b => b.onclick = () => { planPick.opt = Number(b.dataset.plopt); document.querySelectorAll('[data-plopt]').forEach(x => x.classList.toggle('on', x===b)); });
   document.querySelectorAll('[data-plkm]').forEach(b => b.onclick = () => { planPick.km = Number(b.dataset.plkm); document.querySelectorAll('[data-plkm]').forEach(x => x.classList.toggle('on', x===b)); });
+  let pvWeek = 1;
+  const drawPrev = () => {
+    const box = document.getElementById('plPrev'); if (!box) return;
+    let run; try{ const st = mondayOnOrAfter(document.getElementById('plStart').value || todayStr()); run = buildRun(p, p.pick === 'trip' ? (document.getElementById('plStart').value || todayStr()) : st, planPick.opt, planPick.km); }catch(e){ box.innerHTML = '<div class="notes">No preview for this one.</div>'; return; }
+    const weeks = Array.from(new Set(run.sessions.map(x => x.week))).sort((a, b) => a - b);
+    if (!weeks.includes(pvWeek)) pvWeek = weeks[0];
+    const days = run.sessions.filter(x => x.week === pvWeek).sort((a, b) => a.date.localeCompare(b.date));
+    const line = (it) => `<div class="pvit"><span>${esc(it.ex)}</span><span class="pvs">${esc(it.sets ? it.sets + ' x ' + (it.reps || '') : (it.raw || ''))}</span></div>`;
+    box.innerHTML = `<div class="rtchips pvweeks">${weeks.map(w => `<button type="button" class="rtchip ${w === pvWeek ? 'on' : ''}" data-pvw="${w}">Wk ${w}</button>`).join('')}</div>
+      ${days.length ? days.map(d => `<div class="pvday"><div class="pvh"><b>${esc(new Date(d.date + 'T12:00:00').toLocaleDateString('en-US', { weekday:'short' }))}</b> ${esc(d.focus || '')}</div>${d.items.map(line).join('')}</div>`).join('') : '<div class="notes">Nothing scheduled this week.</div>'}`;
+    box.querySelectorAll('[data-pvw]').forEach(b => b.onclick = () => { pvWeek = Number(b.dataset.pvw); drawPrev(); });
+  };
+  document.getElementById('plPrevWrap').addEventListener('toggle', drawPrev);
+  document.getElementById('plStart').onchange = drawPrev;
+  document.querySelectorAll('[data-plopt],[data-plkm]').forEach(b => b.addEventListener('click', () => setTimeout(drawPrev, 0)));
   document.getElementById('plCancel').onclick = closeSheet;
   document.getElementById('plGo').onclick = () => startPlan(p);
 }
@@ -5347,8 +5339,8 @@ function renderBuilder(keepScroll){
   const top = el ? el.scrollTop : 0;
   if (!el || s.hidden){ openSheet(builderHtml()); el = s.querySelector('.sheetin'); } else { el.innerHTML = builderHtml(); el.scrollTop = keepScroll ? top : 0; }
 }
-function openBuilder(id){
-  bld = newBuilder(id ? customPlans[id] : null);
+function openBuilder(id, keep){
+  if (!keep) bld = newBuilder(id ? customPlans[id] : null);
   renderBuilder();
   const s = document.getElementById('sheet');
   s.oninput = (e) => {
@@ -5373,7 +5365,8 @@ function openBuilder(id){
     if (d.bw){ bld.weeks = Number(d.bw); renderBuilder(true); }
     else if (d.bm){ bld.mode = d.bm; renderBuilder(true); }
     else if (d.bd != null){ const day = bld.days[d.bd]; day.on = !day.on; if (day.on && !day.items.length) day.items.push({ ex:'', sets:'', reps:'' }); renderBuilder(true); }
-    else if (d.badd != null){ bld.days[d.badd].items.push({ ex:'', sets:'', reps:'' }); renderBuilder(true); }
+    else if (d.badd != null){ const di = d.badd; const day = bld.days[di]; if (day.items.length === 1 && !day.items[0].ex.trim()) day.items.length = 0;
+      openExercisePicker((name) => { bld.days[di].items.push({ ex:name, sets:'3', reps:'8-10' }); }, () => openBuilder(null, true)); }
     else if (d.brm){ const [i, n] = d.brm.split(':'); bld.days[i].items.splice(Number(n), 1); renderBuilder(true); }
     else if (d.bdel){ bld.deload = !bld.deload; renderBuilder(true); }
     else if (b.id === 'bCancel'){ closeSheet(); }
@@ -5551,24 +5544,7 @@ function renderSettings(){
       <div class="notes">Distances in plans and logging. Lifting weights are in lb for now.</div>
       <div class="rareas" id="unitPick"><button class="mpick ${isMetric()?'':'on'}" data-unit="imperial">Miles</button><button class="mpick ${isMetric()?'on':''}" data-unit="metric">Kilometers</button></div>
     </div>
-    <details class="card fold"><summary><span><b>Backup</b><small>Export or restore</small></span></summary>
-      <div class="notes">Your data lives in your own database. Export a copy any time, or restore one.</div>
-      <div class="rbtns"><button class="ghostbtn" id="bkExport">Export backup</button><button class="ghostbtn" id="bkImport">Import backup</button><button class="ghostbtn" id="bkCsv">Export CSV</button></div>
-      <input type="file" id="bkFile" accept="application/json,.json" hidden>
-      <div class="notes" id="bkMsg"></div>
-    </details>
-    <details class="card fold"><summary><span><b>Display info</b></span></summary>
-      <div class="notes" id="dispInfo" style="white-space:pre-line;font-variant-numeric:tabular-nums;"></div>
-      <button class="ghostbtn" id="dispRefresh" style="align-self:flex-start;">Refresh</button>
-    </details>
-    <details class="card fold"><summary><span><b>Account</b></span></summary>
-      <div class="notes" id="acctLine"></div>
-      <button class="ghostbtn" id="acctOut" style="align-self:flex-start;">Sign out</button>
-    </details>
-    <div class="card">
-      <div class="exname">Cairn</div>
-      <div class="notes">A cairn is a stack of stones that marks the trail. Each logged set is another stone.</div>
-    </div>`;
+`;
   document.getElementById('swTimer').onclick = (e) => { settings.timer = !settings.timer; saveSettings(); e.currentTarget.classList.toggle('on', settings.timer); };
   document.getElementById('themeOpen').onclick = () => { settingsPage = 'theme'; renderSettings(); window.scrollTo(0,0); };
   document.querySelectorAll('[data-theme-pick]').forEach(b => b.onclick = () => {
@@ -5592,6 +5568,37 @@ function renderSettings(){
     applyPlanRuns(); watchDayLogs(); watchDayEdit();
   });
   document.getElementById('swSound').onclick = (e) => { settings.sound = !settings.sound; saveSettings(); e.currentTarget.classList.toggle('on', settings.sound); };
+  drawPushCard();
+  document.getElementById('prPreview').onclick = () => showPRCard([{ ex:'Deadlift', w:295, r:5, e1:344, prev:333 }, { ex:'Bench press', w:205, r:5, e1:239, prev:234 }]);
+  document.getElementById('swTest').onclick = () => {
+    primeBeep();
+    restT = { end: Date.now()+5000, total: 5, label: 'Timer test', fired:false };
+    if (!restInt) restInt = setInterval(tickRest, 250);
+    tickRest();
+  };
+}
+
+
+function renderAccount(){
+  const main = mainEl();
+  main.innerHTML = `
+    <div class="card"><div class="exname">You</div>
+      <div class="notes" id="acctLine"></div>
+      ${window.CAIRN_FRESH ? '<div class="notes">This is a fresh preview. Everything you log stays on this phone only.</div><button class="ghostbtn danger" id="acctReset" style="align-self:flex-start;">Erase and start over</button>' : '<button class="ghostbtn" id="acctOut" style="align-self:flex-start;">Sign out</button>'}
+    </div>
+    <div class="card"><div class="exname">Your data</div>
+      <div class="notes">Keep a copy of your logs, or restore one.</div>
+      <div class="rbtns"><button class="ghostbtn" id="bkExport">Export backup</button><button class="ghostbtn" id="bkImport">Import backup</button><button class="ghostbtn" id="bkCsv">Export CSV</button></div>
+      <input type="file" id="bkFile" accept="application/json,.json" hidden>
+      <div class="notes" id="bkMsg"></div>
+    </div>
+    <div class="card"><div class="exname">Welcome</div><div class="notes">See the first-run screens again.</div><button class="ghostbtn" id="acctWelcome" style="align-self:flex-start;">Show welcome</button></div>
+    <details class="card fold"><summary><span><b>Display info</b><small>For troubleshooting</small></span></summary>
+      <div class="notes" id="dispInfo" style="white-space:pre-line;font-variant-numeric:tabular-nums;"></div>
+      <button class="ghostbtn" id="dispRefresh" style="align-self:flex-start;">Refresh</button>
+    </details>
+    <div class="card"><div class="exname">Cairn Labs</div>
+      <div class="notes">A cairn is a stack of stones that marks the trail. Each logged set is another stone.</div></div>`;
   const showDisp = () => {
     const pr = document.createElement('div');
     pr.style.cssText = 'position:fixed;left:0;top:0;visibility:hidden;padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px)';
@@ -5611,22 +5618,15 @@ function renderSettings(){
   };
   fixViewport(); showDisp(); document.getElementById('dispRefresh').onclick = () => { fixViewport(); showDisp(); };
   const u = window.cairnUser && window.cairnUser();
-  document.getElementById('acctLine').textContent = u ? ('Signed in as ' + u.email) : 'Not signed in.';
-  document.getElementById('acctOut').onclick = () => { if (window.cairnSignOut) window.cairnSignOut(); };
+  document.getElementById('acctLine').textContent = window.CAIRN_FRESH ? 'No account needed in the fresh preview.' : (u ? ('Signed in as ' + u.email) : 'Not signed in.');
+  const ao = document.getElementById('acctOut'); if (ao) ao.onclick = () => { if (window.cairnSignOut) window.cairnSignOut(); };
   document.getElementById('bkExport').onclick = exportBackup;
   document.getElementById('bkCsv').onclick = exportCsv;
   document.getElementById('bkImport').onclick = () => document.getElementById('bkFile').click();
   document.getElementById('bkFile').onchange = (e) => { const f = e.target.files[0]; if (f) importBackup(f); e.target.value = ''; };
-  drawPushCard();
-  document.getElementById('prPreview').onclick = () => showPRCard([{ ex:'Deadlift', w:295, r:5, e1:344, prev:333 }, { ex:'Bench press', w:205, r:5, e1:239, prev:234 }]);
-  document.getElementById('swTest').onclick = () => {
-    primeBeep();
-    restT = { end: Date.now()+5000, total: 5, label: 'Timer test', fired:false };
-    if (!restInt) restInt = setInterval(tickRest, 250);
-    tickRest();
-  };
+  const rs = document.getElementById('acctReset'); if (rs) rs.onclick = () => { if (!confirm('Erase this preview and start over?')) return; ['cairnlabs_fresh_db','cairnlabs_welcomed','cairnlabs_settings','cairnlabs_trail'].forEach(k => { try{ localStorage.removeItem(k); }catch(e){} }); location.reload(); };
+  document.getElementById('acctWelcome').onclick = () => showWelcome();
 }
-
 
 /* iOS home-screen apps sometimes report a viewport shorter than the screen; push bottom-fixed UI down by the missing amount */
 function fixViewport(){
