@@ -965,6 +965,7 @@ function showWelcome(){
 }
 async function init(){
   ensureQuickDays();
+  if (quickMode() && settings.focus === 'run') subs.progress = 'cardio';
   curIdx = findTodayIdx();
   renderShell();
   try{
@@ -2943,6 +2944,18 @@ const PROGRESS_GROUPS = [
 ];
 const VIEW_TITLES = { progress:'Progress', body:'Body', plan:'Plan' };
 let subs = { progress:'week', body:'readiness', plan:'maxes' };
+/* Simple view shows the few things most people use. "Show everything" in Settings brings the rest back. */
+const SIMPLE_SUBS = {
+  progress: [['route','Trail'],['week','Week'],['cardio','Cardio'],['history','Lifts'],['records','Records'],['weight','Weight'],['goals','Goals']],
+  body: [['readiness','Check-in'],['mobility','Mobility'],['flares','Flare-ups']],
+  plan: [['plans','Programs'],['exercises','Exercises'],['settings','Settings']]
+};
+function subList(v){
+  if (settings.advanced) return SUBS[v];
+  let l = SIMPLE_SUBS[v] || SUBS[v];
+  if (v === 'progress' && settings.focus === 'run') l = l.filter(x => x[0] !== 'history' && x[0] !== 'records');
+  return l;
+}
 function curSub(){ return view==='today' ? 'today' : subs[view]; }
 function mainEl(){ return document.getElementById('subbody') || document.getElementById('main'); }
 function isWarm(ex){ return /warm-up/i.test(ex||''); }
@@ -2950,7 +2963,7 @@ function dateStrAgo(n){ const d=new Date(); d.setDate(d.getDate()-n); return d.g
 function offlineNote(){ return `<div class="offlineflag">Not connected. Entries here will not be saved.</div>`; }
 
 /* ---- settings (per-viewer, stored locally) ---- */
-let settings = { mode:'quick', timer:true, sound:true, units:'imperial', theme:'system', accent:'rust', bar:45, plates:[45,35,25,10,5,2.5] };
+let settings = { mode:'quick', advanced:false, timer:true, sound:true, units:'imperial', theme:'system', accent:'rust', bar:45, plates:[45,35,25,10,5,2.5] };
 try{ const s = JSON.parse(localStorage.getItem('cairnlabs_settings')||'null'); if (s) settings = Object.assign(settings, s); }catch(e){}
 const ACCENTS = {
   amber:{ n:'Amber', d:'#E0A233', l:'#A6631B' },
@@ -2997,8 +3010,9 @@ function renderSubView(){
   if (curSub() !== 'settings') settingsPage = 'main';
   const main = document.getElementById('main');
   main.hidden = false;
-  const list = SUBS[view];
-  if (view === 'progress'){
+  const list = subList(view);
+  if (!list.some(x => x[0] === subs[view])) subs[view] = list[0][0];
+  if (view === 'progress' && settings.advanced){
     main.innerHTML = `<div class="plannav grp">${PROGRESS_GROUPS.map(([name, items], gi) => {
       const cur = items.find(([k]) => k === subs.progress);
       return `<div class="ddwrap"><button class="mpick ddbtn ${cur ? 'on' : ''}" data-grp="${gi}" aria-haspopup="true" aria-expanded="false">${cur ? cur[1] : name}<span class="car">&#9662;</span></button>
@@ -3838,7 +3852,54 @@ async function renderVolume(){
 /* ================= PROGRESS: WEEKLY REVIEW ================= */
 let weekSel = null, weekToken = 0;
 const fmtLb = (n) => Math.round(n).toLocaleString('en-US');
+let qWeek = null;
+async function renderWeekQuick(){
+  const main = mainEl();
+  if (!qWeek) qWeek = mondayOf(todayStr());
+  const start = qWeek, end = addDaysStr(start, 6), prevStart = addDaysStr(start, -7), thisMon = mondayOf(todayStr());
+  const rangeTxt = fmtDate(start) + ' to ' + fmtDate(end);
+  main.innerHTML = `<div class="daynav" style="gap:10px;"><button class="navbtn" id="qwPrev" aria-label="Previous week">&#8249;</button>
+    <div class="daytitle"><div class="wk tabular">${start === thisMon ? 'This week' : 'Week of'}</div><h1 style="font-size:24px;">${esc(rangeTxt)}</h1></div>
+    <button class="navbtn" id="qwNext" ${start >= thisMon ? 'disabled' : ''} aria-label="Next week">&#8250;</button></div>
+    <div id="wkBody" class="subbody"><div class="notes">Loading...</div></div>`;
+  document.getElementById('qwPrev').onclick = () => { qWeek = prevStart; renderWeekQuick(); };
+  document.getElementById('qwNext').onclick = () => { if (start < thisMon){ qWeek = addDaysStr(start, 7); renderWeekQuick(); } };
+  const per = {}, prev = { lb: 0 }; let cardio = [];
+  if (!offline && db){
+    try{
+      const snap = await db.collection('logs').where('date','>=',prevStart).orderBy('date','asc').limit(1000).get();
+      snap.docs.forEach(d => {
+        const x = d.data(); if (!x || !x.date || x.date > end || !x.sets) return;
+        let lb = 0, n = 0; x.sets.forEach(st => { if (st && st.done && st.w > 0 && st.r > 0){ lb += st.w * st.r; n++; } });
+        if (!n) return;
+        if (x.date < start){ prev.lb += lb; return; }
+        const pd = per[x.date] = per[x.date] || { lb:0, sets:0, ex:new Set() }; pd.lb += lb; pd.sets += n; pd.ex.add(String(x.exercise || '').replace(/\s*\(.*\)/, ''));
+      });
+      cardio = (await loadCardio(true)).filter(c => c.date >= start && c.date <= end);
+    }catch(e){ console.warn(e); }
+  }
+  if (curSub() !== 'week' || view !== 'progress') return;
+  const total = Object.values(per).reduce((a, b) => a + b.lb, 0), sets = Object.values(per).reduce((a, b) => a + b.sets, 0);
+  const cmi = cardio.reduce((a, c) => a + (Number(c.mi) || 0), 0), maxLb = Math.max(1, ...Object.values(per).map(x => x.lb));
+  const active = new Set([...Object.keys(per), ...cardio.map(c => c.date)]).size;
+  const delta = prev.lb > 0 ? Math.round((total - prev.lb) / prev.lb * 100) : null;
+  const rows = [0,1,2,3,4,5,6].map(i => {
+    const d = addDaysStr(start, i), pd = per[d], cs = cardio.filter(c => c.date === d);
+    const dow = new Date(d + 'T12:00:00').toLocaleDateString('en-US', { weekday:'short' });
+    const bar = `<div class="mtrack">${pd ? `<div class="mfill" style="width:${Math.max(4, Math.round(pd.lb / maxLb * 100))}%"></div>` : ''}</div>`;
+    const bits = [pd ? `<b class="tabular">${fmtLb(pd.lb)}</b> lb` : '', cs.length ? cs.map(c => fmtDist(c.mi)).join(' + ') : ''].filter(Boolean).join(' · ');
+    const det = pd ? `<div class="wkdet">${Array.from(pd.ex).slice(0, 4).map(n => `<span>${esc(n)}</span>`).join('')}</div>` : '';
+    return `<div class="wkday"><div class="wkrow"><div class="wkd">${dow}</div>${bar}<div class="wkv">${bits || (d > todayStr() ? '' : '-')}</div></div>${det}</div>`;
+  }).join('');
+  document.getElementById('wkBody').innerHTML = `<div class="statrow">
+      <div class="stat"><div class="sv tabular">${active}</div><div class="sl">active days</div></div>
+      <div class="stat"><div class="sv tabular">${fmtLb(total)}</div><div class="sl">lb lifted</div></div>
+      <div class="stat"><div class="sv tabular">${cmi ? fmtDist(cmi).replace(' ', '') : '0'}</div><div class="sl">cardio</div></div></div>
+    <div class="notes">${sets} sets done.${delta == null ? '' : ` ${delta >= 0 ? 'Up' : 'Down'} ${Math.abs(delta)}% in weight lifted from last week.`}</div>
+    <div class="card">${rows}</div>`;
+}
 async function renderWeek(){
+  if (quickMode()) return renderWeekQuick();
   const main = mainEl();
   const real = WORKOUTS.filter(w => !w.synthetic);
   if (weekSel == null) weekSel = WORKOUTS[findTodayIdx()].week;
@@ -5478,6 +5539,14 @@ function renderSettings(){
       <div class="rareas" id="platePick">${ALL_PLATES.slice().reverse().map(p => `<button class="mpick ${(settings.plates||[]).includes(p)?'on':''}" data-plate="${p}">${p}</button>`).join('')}</div>
     </details>
     <div class="card">
+      <div class="exname">How much to show</div>
+      <div class="notes">Simple keeps the main screens. Everything adds extra stats, maxes, roadmap and the long Progress menu.</div>
+      <div class="rareas" id="viewPick"><button class="mpick ${settings.advanced?'':'on'}" data-adv="0">Simple</button><button class="mpick ${settings.advanced?'on':''}" data-adv="1">Everything</button></div>
+      <div class="notes" style="margin-top:10px;">Train screen</div>
+      <div class="rareas" id="modePick"><button class="mpick ${quickMode()?'on':''}" data-mode="quick">Quick log</button><button class="mpick ${quickMode()?'':'on'}" data-mode="program">My program</button></div>
+      <div class="notes">Quick log starts each day blank. My program fills in the built-in training plan.</div>
+    </div>
+    <div class="card">
       <div class="exname">Units</div>
       <div class="notes">Distances in plans and logging. Lifting weights are in lb for now.</div>
       <div class="rareas" id="unitPick"><button class="mpick ${isMetric()?'':'on'}" data-unit="imperial">Miles</button><button class="mpick ${isMetric()?'on':''}" data-unit="metric">Kilometers</button></div>
@@ -5515,6 +5584,8 @@ function renderSettings(){
     if (cur.has(p)) cur.delete(p); else cur.add(p);
     settings.plates = [...cur].sort((a,b) => b-a); saveSettings(); b.classList.toggle('on', cur.has(p));
   });
+  document.querySelectorAll('[data-adv]').forEach(b => b.onclick = () => { settings.advanced = b.dataset.adv === '1'; saveSettings(); renderSubView(); });
+  document.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => { const m = b.dataset.mode; if (m === settings.mode || (m === 'quick' && quickMode())) return; settings.mode = m; if (m === 'program') settings.advanced = true; saveSettings(); location.reload(); });
   document.querySelectorAll('[data-unit]').forEach(b => b.onclick = () => {
     settings.units = b.dataset.unit; saveSettings();
     document.querySelectorAll('[data-unit]').forEach(x => x.classList.toggle('on', x === b));
