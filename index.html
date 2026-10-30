@@ -416,10 +416,10 @@ main{ gap:14px; padding-block:16px 96px; }
   background:radial-gradient(circle at 50% 40%, color-mix(in srgb,var(--accent) 24%,transparent), color-mix(in srgb,var(--bg) 94%,transparent) 62%); backdrop-filter:blur(2px); animation:prFade .3s ease both; }
 .prfx.out{ animation:prOut .35s ease forwards; }
 .prfx svg.prst{ width:130px; height:130px; position:relative; z-index:2; }
-.prfx svg.prst ellipse{ opacity:0; transform-box:fill-box; transform-origin:center; animation:prStone .5s var(--ease) forwards; }
-.prfx svg.prst ellipse:nth-child(1){ animation-delay:.15s } .prfx svg.prst ellipse:nth-child(2){ animation-delay:.5s } .prfx svg.prst ellipse:nth-child(3){ animation-delay:.85s } .prfx svg.prst ellipse:nth-child(4){ animation-delay:1.2s }
-.prfx .prring{ position:absolute; left:50%; top:40%; width:200px; height:200px; margin:-100px 0 0 -100px; border-radius:50%; border:2px solid var(--accent); opacity:0; animation:prRing 1.8s ease-out 1.5s 2; }
-.prfx .prtxt{ position:relative; z-index:2; opacity:0; animation:prRise .5s var(--ease) 1.5s forwards; display:flex; flex-direction:column; align-items:center; }
+.prfx svg.prst ellipse{ opacity:0; transform-box:fill-box; transform-origin:center; animation:prStone .95s cubic-bezier(.3,0,.5,1) forwards; }
+.prfx svg.prst ellipse:nth-child(1){ animation-delay:.1s } .prfx svg.prst ellipse:nth-child(2){ animation-delay:.75s } .prfx svg.prst ellipse:nth-child(3){ animation-delay:1.4s } .prfx svg.prst ellipse:nth-child(4){ animation-delay:2.05s }
+.prfx .prring{ position:absolute; left:50%; top:40%; width:200px; height:200px; margin:-100px 0 0 -100px; border-radius:50%; border:2px solid var(--accent); opacity:0; animation:prRing 1.8s ease-out 3.1s 2; }
+.prfx .prtxt{ position:relative; z-index:2; opacity:0; animation:prRise .5s var(--ease) 3s forwards; display:flex; flex-direction:column; align-items:center; }
 .prfx .prwords{ font-size:13px; letter-spacing:.32em; font-weight:800; color:var(--accent); margin-top:8px; }
 .prfx .prbig{ font-size:46px; font-weight:800; line-height:1.05; margin:6px 0 2px; }
 .prfx .prlift{ font-size:17px; color:var(--muted); }
@@ -427,10 +427,10 @@ main{ gap:14px; padding-block:16px 96px; }
 .prfx .prdelta b{ color:var(--good); }
 .prfx .prmore{ margin-top:8px; font-size:13px; color:var(--muted); }
 .prfx .prbtn{ margin-top:20px; background:var(--accent); color:var(--accent-fg); border:0; font:inherit; font-weight:700; border-radius:12px; padding:12px 44px; }
-.prfx .prdot{ position:absolute; border-radius:50%; background:var(--accent); opacity:0; animation:prDot 2.4s ease-out 1.5s forwards; }
+.prfx .prdot{ position:absolute; border-radius:50%; background:var(--accent); opacity:0; animation:prDot 2.4s ease-out 3.1s forwards; }
 @keyframes prFade{ from{ opacity:0 } to{ opacity:1 } }
 @keyframes prOut{ to{ opacity:0 } }
-@keyframes prStone{ from{ opacity:0; transform:translateY(-16px) scale(.9) } to{ opacity:1; transform:none } }
+@keyframes prStone{ 0%{ opacity:0; transform:translateY(-170px) rotate(-8deg) } 38%{ opacity:1; transform:translateY(0) rotate(0) } 52%{ transform:translateY(-9px) } 66%{ transform:translateY(0) } 76%{ transform:translateY(-3px) } 100%{ opacity:1; transform:none } }
 @keyframes prRise{ from{ opacity:0; transform:translateY(10px) } to{ opacity:1; transform:none } }
 @keyframes prRing{ 0%{ opacity:.55; transform:scale(.6) } 100%{ opacity:0; transform:scale(1.7) } }
 @keyframes prDot{ 0%{ opacity:0; transform:translateY(0) } 20%{ opacity:.9 } 100%{ opacity:0; transform:translateY(-70px) } }
@@ -628,6 +628,39 @@ table.hist th{ text-transform:none; letter-spacing:0; font-size:12px; }
 .tabbtn{ text-transform:uppercase !important; letter-spacing:.08em !important; font-size:10.5px !important; border-radius:0 !important; }
 .tabbtn.active::before{ border-radius:0 !important; }
 details.fold:not([open]){ padding:10px 0 !important; }
+
+/* trail route */
+.rtchips{ display:flex; gap:8px; flex-wrap:wrap; }
+.rtchip{ background:transparent; border:1.5px solid var(--line); color:var(--muted); font:inherit; font-size:12px; padding:6px 12px; border-radius:0; }
+.rtchip.on{ background:var(--accent); border-color:var(--accent); color:var(--accent-fg); font-weight:700; }
+.rttitle{ font-size:30px; margin:8px 0 2px; color:var(--accent); }
+.rtsvg{ width:100%; height:auto; display:block; }
+.rtsvg text{ font-family:var(--mono); font-size:11.5px; fill:var(--fg); }
+.rt .sum{ border-top:2px solid var(--accent); margin-top:6px; }
+.rt .sum div{ display:flex; justify-content:space-between; align-items:baseline; padding:9px 0; border-bottom:1px solid var(--line); font-size:11px; letter-spacing:.08em; color:var(--muted); }
+.rt .sum b{ font-family:var(--serif); font-size:22px; color:var(--fg); letter-spacing:0; }
+.rt .lab{ font-size:10.5px; letter-spacing:.1em; color:var(--muted); margin:14px 0 6px; }
+.rthit{ border:2px solid var(--accent); padding:12px 14px; margin:10px 0; display:flex; flex-direction:column; gap:6px; }
+.rtk{ font-size:10.5px; letter-spacing:.14em; color:var(--accent); font-weight:700; }
+.rtbig{ font-family:var(--serif); font-weight:700; font-size:30px; line-height:1.1; }
+.rtsug{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:4px; }
+.rtin{ background:transparent; border:0; border-bottom:2px solid var(--fg); border-radius:0; color:var(--fg); font:inherit; font-weight:700; width:110px; padding:6px 2px; }
+.rtgo{ padding:9px 14px; width:auto !important; flex:none; }
+.rtmine{ display:flex; gap:6px; flex-wrap:wrap; }
+.rtx{ background:transparent; border:0; color:var(--muted); font:inherit; padding:0 0 0 4px; }
+.rtform{ display:flex; gap:10px; align-items:center; margin-top:10px; }
+
+/* stronger color: accent on rules, names, titles, done sets and numbers */
+.card{ border-top-color:var(--accent) !important; }
+.card .exname{ color:var(--accent); }
+.setrow:has(.donebtn.on){ background:color-mix(in srgb,var(--accent) 16%, transparent) !important; }
+.setrow:has(.donebtn.on) input{ background:transparent !important; }
+.mpick.on{ background:var(--accent) !important; border-color:var(--accent) !important; color:var(--accent-fg) !important; }
+.viewhead h2, .daytitle h1{ color:var(--accent); }
+.topbar, .viewhead{ border-bottom-color:var(--accent) !important; }
+.stat .sv, .recbig{ color:var(--accent); }
+.statrow .stat{ border-top-color:var(--accent) !important; }
+.ready,.ready.green,.ready.yellow,.ready.red{ border-top-color:var(--accent) !important; }
 </style>
 <script src="cairn-db.js"></script>
 </head>
@@ -1658,6 +1691,99 @@ async function renderRecap(){
   document.getElementById('recapSum').onclick = () => { document.getElementById('recapCmp').textContent = compareLb(s.ton) + ' Tap to see another.'; };
 }
 
+/* ===== Trail route: one trail per lift, cairns at milestones, your own targets, goal hit ===== */
+let routeLift = 'squat';
+const ROUTE_LIFTS = [['squat','Squat','squat'],['bench','Bench','bench'],['dl','Deadlift','deadlift']];
+function routeSvg(o){
+  const n = o.pts.length, step = 70, H = n*step + 60, W = 346;
+  const xy = o.pts.map((p,i) => [i%2 ? W-80 : 70, H-44-i*step]);
+  const k = o.k, a = k ? xy[k-1] : [W/2, H-6], b = xy[Math.min(k, n-1)];
+  const you = o.goalHit ? xy[n-1] : [a[0]+(b[0]-a[0])*o.frac, a[1]+(b[1]-a[1])*o.frac];
+  const path = (arr) => arr.map((p,i) => (i?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' ');
+  const done = o.goalHit ? xy : [...xy.slice(0,k), you];
+  const ys = [[0,0,15,5.5],[-1,-8,11,5],[1,-15,7,4.2]];
+  const stone = (x,y,built,big,flag,custom) => {
+    if (custom) return `<g transform="translate(${x},${y})"><path d="M0 4 v-26" stroke="${built?'var(--accent)':'var(--faint)'}" stroke-width="2"/><path d="M0 -22 l12 5 l-12 5 z" fill="${built?'var(--accent)':'none'}" stroke="${built?'var(--accent)':'var(--faint)'}" stroke-width="1.6" ${built?'':'stroke-dasharray="3 2"'}/></g>`;
+    const g = ys.map((e,i) => built
+      ? `<ellipse cx="${e[0]}" cy="${e[1]}" rx="${e[2]}" ry="${e[3]}" style="fill:${i%2?'color-mix(in srgb,var(--accent) 84%,#000)':i==2?'color-mix(in srgb,var(--accent) 82%,#fff)':'var(--accent)'}" stroke="var(--bg)" stroke-width="1.4"/>`
+      : `<ellipse cx="${e[0]}" cy="${e[1]}" rx="${e[2]}" ry="${e[3]}" fill="none" stroke="var(--faint)" stroke-width="1.5" stroke-dasharray="3 3"/>`).join('');
+    const fl = flag ? '<path d="M0 -22 v-16 l14 5 l-14 5" fill="var(--accent)" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round"/>' : '';
+    return `<g transform="translate(${x},${y}) scale(${big?1.25:1})">${g}${fl}</g>`;
+  };
+  let s = `<svg class="rtsvg" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(o.label)}">`;
+  s += `<path d="${path(xy)}" fill="none" stroke="var(--line)" stroke-width="3" stroke-linecap="round" stroke-dasharray="1 9"/>`;
+  s += `<path d="${path(done)}" fill="none" stroke="var(--accent)" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>`;
+  xy.forEach((p,i) => {
+    const last = i === n-1, built = i < k, left = p[0] < W/2;
+    s += stone(p[0], p[1]+6, built, last, last && !o.goalHit, o.pts[i].custom);
+    s += `<text x="${left ? p[0]+26 : p[0]-26}" y="${p[1]+4}" text-anchor="${left?'start':'end'}"${last?' style="font-weight:700"':''}>${o.pts[i].label}${last ? ' GOAL' : ''}</text>`;
+  });
+  if (o.goalHit){ const p = xy[n-1]; s += `<path d="M${p[0]} ${p[1]-18} v-30 l16 6 l-16 6" fill="var(--accent)" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round"/>`; }
+  else {
+    s += `<circle cx="${you[0]}" cy="${you[1]}" r="9" fill="var(--bg)" stroke="var(--accent)" stroke-width="2.5"/><circle cx="${you[0]}" cy="${you[1]}" r="3.5" fill="var(--accent)"/>`;
+    if (o.frac < .2) s += `<text x="${you[0]}" y="${you[1]-28}" text-anchor="middle" style="font-weight:700;fill:var(--accent)">${o.youLabel}</text>`;
+    else { const lft = you[0] < W/2; s += `<text x="${lft ? you[0]+16 : you[0]-16}" y="${you[1]+4}" text-anchor="${lft?'start':'end'}" style="font-weight:700;fill:var(--accent)">${o.youLabel}</text>`; }
+  }
+  return s + '</svg>';
+}
+async function renderRoute(){
+  const main = mainEl();
+  if (curSub() !== 'route') return;
+  main.innerHTML = '<div class="rt"><div class="notes">Loading...</div></div>';
+  if (offline || !db){ main.innerHTML = '<div class="notes">Not connected.</div>'; return; }
+  let custom = {}, d;
+  try{ const g = await db.doc('state/goals').get(); if (g.exists) goals = Object.assign({}, GOAL_DEFAULT, g.data()); }catch(e){}
+  try{ const t = await db.doc('state/trail').get(); if (t.exists) custom = (t.data() && t.data().custom) || {}; }catch(e){}
+  try{ d = await loadTrail(); }catch(e){ main.innerHTML = '<div class="notes">Could not load your logs.</div>'; return; }
+  if (curSub() !== 'route') return;
+  const [id, name, gkey] = ROUTE_LIFTS.find(x => x[0] === routeLift) || ROUTE_LIFTS[0];
+  const fam = d.fams.find(f => f.id === id), goal = Number(goals[gkey]) || 0, val = Math.round(fam.value);
+  const mine = (custom[id] || []).map(Number).filter(c => c > 0 && c < goal);
+  const pts = [];
+  fam.tiers.filter(t => t < goal).forEach(t => pts.push({ v:t, label:String(t) }));
+  mine.forEach(c => { if (!pts.some(p => p.v === c)) pts.push({ v:c, label:String(c), custom:true }); });
+  pts.push({ v:goal, label:String(goal) });
+  pts.sort((a,b) => a.v - b.v);
+  const hit = goal > 0 && val >= goal;
+  const k = pts.filter(p => p.v <= val).length;
+  const lo = k ? pts[k-1].v : 0, hi = pts[Math.min(k, pts.length-1)].v;
+  const frac = hit ? 1 : Math.max(0, Math.min(1, (val - lo) / (hi - lo || 1)));
+  const next = pts.find(p => p.v > val);
+  const hitKey = 'cairnlabs_goalhit_' + id + '_' + goal;
+  let hidden = false; try{ hidden = !!localStorage.getItem(hitKey); }catch(e){}
+  const chips = ROUTE_LIFTS.map(([i, n]) => `<button class="rtchip ${i===id?'on':''}" data-rl="${i}">${n}</button>`).join('');
+  const sug = [25,50,100].map(n => Math.ceil((val + n) / 5) * 5);
+  const hitBox = (hit && !hidden) ? `<div class="rthit"><div class="rtk">GOAL HIT</div><div class="rtbig">${goal} lb, built.</div>
+      <div class="notes">${name} estimated max ${val} lb. Pick the next one, or keep this trail as it is.</div>
+      <div class="rtsug">${sug.map(n => `<button class="rtchip" data-ng="${n}">${n}</button>`).join('')}<input id="rtNg" type="number" inputmode="numeric" placeholder="your own" class="rtin"><button class="savebtn rtgo" id="rtNgSave">Set new goal</button></div>
+      <div class="rtkeep"><button class="ghostbtn" id="rtKeep">Keep this trail</button></div></div>` : '';
+  const svg = routeSvg({ pts, k, frac, goalHit:hit, youLabel:'YOU ' + val, label: name + ' trail, ' + val + ' of ' + goal });
+  main.innerHTML = `<div class="rt"><div class="rtchips">${chips}</div>
+    <h2 class="rttitle">${name} trail</h2>
+    <div class="notes">Each cairn is a milestone on the way to ${goal}. Flags are your own targets.</div>
+    ${hitBox}${svg}
+    <div class="sum"><div><span>ESTIMATED MAX</span><b>${val} lb</b></div><div><span>TO GOAL</span><b>${hit ? 'Done' : (goal - val) + ' lb'}</b></div><div><span>NEXT</span><b>${next ? next.v + (next.custom ? ' (yours)' : '') : '-'}</b></div></div>
+    <div class="rtadd"><div class="lab">YOUR TARGETS</div>
+      <div class="rtmine">${mine.length ? mine.sort((a,b)=>a-b).map(c => `<span class="chip">${c} lb <button class="rtx" data-rx="${c}" aria-label="Remove ${c}">✕</button></span>`).join('') : '<span class="notes">None yet.</span>'}</div>
+      <div class="rtform"><input id="rtT" type="number" inputmode="numeric" placeholder="e.g. 450" class="rtin"><button class="ghostbtn" id="rtAdd">Add a target</button></div></div></div>`;
+  const saveTrail = async (next) => { try{ await db.doc('state/trail').set({ custom: next, updatedAt: new Date().toISOString() }); }catch(e){ console.warn(e); } renderRoute(); };
+  main.querySelectorAll('[data-rl]').forEach(b => b.onclick = () => { routeLift = b.dataset.rl; renderRoute(); });
+  document.getElementById('rtAdd').onclick = () => {
+    const v = Math.round(Number(document.getElementById('rtT').value));
+    if (!(v > 0) || v >= goal) return;
+    const cur = (custom[id] || []).map(Number); if (!cur.includes(v)) cur.push(v);
+    saveTrail(Object.assign({}, custom, { [id]: cur.sort((a,b) => a-b) }));
+  };
+  main.querySelectorAll('[data-rx]').forEach(b => b.onclick = () => saveTrail(Object.assign({}, custom, { [id]: (custom[id] || []).map(Number).filter(c => c !== Number(b.dataset.rx)) })));
+  const setGoal = async (n) => {
+    if (!(n > val)) return;
+    try{ await db.doc('state/goals').set(Object.assign({}, goals, { [gkey]: n, updatedAt: new Date().toISOString() })); goals[gkey] = n; }catch(e){ console.warn(e); }
+    renderRoute();
+  };
+  main.querySelectorAll('[data-ng]').forEach(b => b.onclick = () => setGoal(Number(b.dataset.ng)));
+  const ngs = document.getElementById('rtNgSave'); if (ngs) ngs.onclick = () => setGoal(Math.round(Number(document.getElementById('rtNg').value)));
+  const kp = document.getElementById('rtKeep'); if (kp) kp.onclick = () => { try{ localStorage.setItem(hitKey, '1'); }catch(e){} renderRoute(); };
+}
 async function renderTrail(){
   const main = mainEl();
   if (curSub() !== 'trail') return;
@@ -2178,12 +2304,12 @@ function renderMaxes(){
 
 /* =================== CAIRN ADDITIONS =================== */
 const SUBS = {
-  progress: [['week','Week'],['goals','Goals'],['recap','Recap'],['history','Lifts'],['records','Records'],['balance','Balance'],['trail','Trail'],['volume','Volume'],['weight','Weight'],['strength','Strength'],['functional','Functional'],['sticking','Bench'],['skips','Skips'],['bench','Tests']],
+  progress: [['week','Week'],['goals','Goals'],['recap','Recap'],['route','Trail'],['history','Lifts'],['records','Records'],['balance','Balance'],['trail','Markers'],['volume','Volume'],['weight','Weight'],['strength','Strength'],['functional','Functional'],['sticking','Bench'],['skips','Skips'],['bench','Tests']],
   body: [['readiness','Readiness'],['flares','Flare-ups'],['flareplan','Flare plan'],['mobility','Mobility']],
   plan: [['maxes','Maxes'],['roadmap','Roadmap'],['plans','Plans'],['exercises','Exercises'],['settings','Settings']]
 };
 const PROGRESS_GROUPS = [
-  ['Overview', [['week','Week'],['goals','Goals'],['recap','Recap'],['trail','Trail']]],
+  ['Overview', [['week','Week'],['goals','Goals'],['recap','Recap'],['route','Trail'],['trail','Markers']]],
   ['Lifting', [['history','Lifts'],['records','Records'],['strength','Strength'],['volume','Volume'],['sticking','Bench']]],
   ['Body', [['weight','Weight'],['balance','Balance'],['functional','Functional']]],
   ['Checks', [['bench','Tests'],['skips','Skips']]],
@@ -2266,6 +2392,7 @@ function renderSubView(){
   else if (s==='balance') renderBalance();
   else if (s==='goals') renderGoals();
   else if (s==='recap') renderRecap();
+  else if (s==='route') renderRoute();
   else if (s==='trail') renderTrail();
   else if (s==='volume') renderVolume();
   else if (s==='weight') renderWeight();
@@ -2677,7 +2804,7 @@ async function celebratePRs(w){
 function showPRCard(list){
   const top = list[0], more = list.slice(1, 4);
   const el = document.createElement('div'); el.className = 'prfx'; el.setAttribute('role','dialog'); el.setAttribute('aria-label','New personal record');
-  const dots = Array.from({length:14}, () => `<span class="prdot" style="left:${8+Math.random()*84}%;top:${22+Math.random()*40}%;width:${5+Math.random()*6|0}px;height:${5+Math.random()*6|0}px;animation-delay:${(1.5+Math.random()*0.9).toFixed(2)}s"></span>`).join('');
+  const dots = Array.from({length:14}, () => `<span class="prdot" style="left:${8+Math.random()*84}%;top:${22+Math.random()*40}%;width:${5+Math.random()*6|0}px;height:${5+Math.random()*6|0}px;animation-delay:${(3.1+Math.random()*0.9).toFixed(2)}s"></span>`).join('');
   el.innerHTML = `${dots}<div class="prring"></div>
     <svg class="prst" viewBox="0 0 100 100" aria-hidden="true"><g stroke="var(--bg)" stroke-width="1.6"><ellipse cx="50" cy="69" rx="31" ry="12" style="fill:var(--accent)"/><ellipse cx="48" cy="54" rx="25" ry="11" style="fill:color-mix(in srgb,var(--accent) 84%,#000)"/><ellipse cx="52" cy="40" rx="19" ry="10" style="fill:color-mix(in srgb,var(--accent) 82%,#fff)"/><ellipse cx="49" cy="28" rx="12" ry="8.5" style="fill:color-mix(in srgb,var(--accent) 92%,#000)"/></g></svg>
     <div class="prtxt"><div class="prwords">NEW PR</div><div class="prbig">${top.w} × ${top.r}</div><div class="prlift">${esc(top.ex)}</div>
@@ -2689,7 +2816,7 @@ function showPRCard(list){
   const close = () => { if (gone) return; gone = true; el.classList.add('out'); setTimeout(() => el.remove(), 380); };
   el.querySelector('.prbtn').onclick = close;
   el.onclick = (e) => { if (e.target === el) close(); };
-  setTimeout(close, 7000);
+  setTimeout(close, 9000);
 }
 
 /* ---- plate math: tap a barbell weight to see what to load ---- */
