@@ -301,6 +301,11 @@ table.hist td.mut{ color:var(--muted); }
 .rbtn2{ background:var(--surface2); border:1px solid var(--line); color:var(--fg); border-radius:8px; font-size:13px; padding:8px 10px; min-height:36px; }
 body.restshown main{ padding-bottom:150px; }
 .finishbtn{ width:100%; flex:none; }
+.wkbar{ display:flex; align-items:center; gap:12px; margin:0 0 12px; }
+.wkbar .savebtn{ width:100%; flex:none; }
+.wkbar.on{ border:1px solid var(--line, currentColor); border-radius:14px; padding:10px 14px; }
+.wkclock{ font-size:26px; font-weight:700; color:var(--accent); }
+.wkbar .ghostbtn{ margin-left:auto; }
 .sheet{ position:fixed; inset:0; bottom:calc(0px - var(--vgap,0px)); z-index:30; background:rgba(0,0,0,.55); display:flex; align-items:flex-end; justify-content:center; }
 .sheetin{ background:var(--bg); border-top:1px solid var(--line); border-radius:16px 16px 0 0; width:100%; max-width:560px; max-height:88vh; overflow:auto; padding:16px 16px calc(16px + env(safe-area-inset-bottom,0px)); display:flex; flex-direction:column; gap:14px; color:var(--fg); }
 #stList,#skList,#flList{ display:flex; flex-direction:column; gap:8px; }
@@ -1361,6 +1366,7 @@ function renderDay(){
   if (offline) html += `<div class="offlineflag">Not connected — changes here won’t be saved.</div>`;
 
   if (!isBlankDay(w)){ html += readinessHtml(); html += deloadBannerHtml(); html += patternHtml(); html += skipBannerHtml(); }
+  html += wkBarHtml();
 
   visible.forEach(item => {
     const isPrimary = /PRIMARY/i.test(item.ex);
@@ -1726,16 +1732,26 @@ async function commitRow(row, itemKey, setIdx){
   try{ await db.collection('logs').doc(w.date+'__'+itemKey).set(body); pushSmartSyncSoon(); }
   catch(e){ console.warn('save failed', e); }
   recCache = null; trailCache = null;
-  if (sets.some(s => s && s.done)) markStarted(w.date);
 }
-/* the clock starts the first time a set is checked off that day */
+/* the workout clock only runs after you press Start workout */
 function markStarted(ds){ try{ if (!localStorage.getItem('cairnlabs_start_'+ds)) localStorage.setItem('cairnlabs_start_'+ds, new Date().toISOString()); }catch(e){} }
+function clearStarted(ds){ try{ localStorage.removeItem('cairnlabs_start_'+ds); }catch(e){} }
+function clockText(st){ const t = Math.max(0, Math.floor((Date.now() - Date.parse(st)) / 1000)), h = Math.floor(t/3600), m = Math.floor(t%3600/60), sc = t%60; return (h ? h + ':' + String(m).padStart(2,'0') : m) + ':' + String(sc).padStart(2,'0'); }
+function wkBarHtml(){
+  if (offline) return '';
+  const { all } = dayItems();
+  if (!all.some(it => it.sets!=null && !it.hidden && !isWarm(it.ex))) return '';
+  if (sessionDoc && sessionDoc.finishedAt) return '';
+  const st = startedAt(WORKOUTS[curIdx].date);
+  if (!st) return '<div class="wkbar"><button class="savebtn" id="wkStart">Start workout</button></div>';
+  return `<div class="wkbar on"><span class="wkclock tabular" id="wkClock">${clockText(st)}</span><span class="notes">Started ${new Date(st).toLocaleTimeString([], { hour:'numeric', minute:'2-digit' })}</span><button class="ghostbtn" id="wkReset">Reset</button></div>`;
+}
+if (!window._wkTick){ window._wkTick = setInterval(() => { const e = document.getElementById('wkClock'); if (!e) return; const st = startedAt(WORKOUTS[curIdx].date); if (st) e.textContent = clockText(st); }, 1000); }
 function startedAt(ds){ try{ return (sessionDoc && sessionDoc.startedAt) || localStorage.getItem('cairnlabs_start_'+ds) || null; }catch(e){ return null; } }
 function workoutMinutes(ds){
   const s = startedAt(ds); if (!s) return null;
-  let last = 0; Object.values(logDoc).forEach(l => { const u = l && l.updatedAt ? Date.parse(l.updatedAt) : 0; if (u > last) last = u; });
-  const m = Math.round((last - Date.parse(s)) / 60000);
-  return m >= 1 && m < 360 ? m : null;
+  const m = Math.round((Date.now() - Date.parse(s)) / 60000);
+  return m >= 1 && m < 720 ? m : null;
 }
 async function saveCheckItem(itemKey, done){
   if (offline) return;
@@ -3393,8 +3409,7 @@ function finishBarHtml(){
   const { all } = dayItems();
   if (!all.some(it => it.sets!=null && !it.hidden && !isWarm(it.ex))) return '';
   const fin = !!(sessionDoc && sessionDoc.finishedAt);
-  const st = !fin ? startedAt(WORKOUTS[curIdx].date) : null, mins = st ? workoutMinutes(WORKOUTS[curIdx].date) : null;
-  const clock = st ? `<div class="notes" style="text-align:center;margin-bottom:6px;">Started ${new Date(st).toLocaleTimeString([], { hour:'numeric', minute:'2-digit' })}${mins ? ' · ' + mins + ' min in' : ''}</div>` : '';
+  const clock = '';
   return clock + `<button class="savebtn finishbtn" id="finishBtn">${fin ? 'View recap' : 'Finish workout'}</button>`;
 }
 function computeRecap(){
@@ -3631,6 +3646,8 @@ function wireToday(){
   const pd = document.getElementById('patDismiss'); if (pd) pd.onclick = () => { try{ localStorage.setItem('cairnlabs_pat', todayStr()); }catch(e){} renderDay(); };
   const fp = document.getElementById('readyFlare'); if (fp) fp.onclick = () => { subs.body = 'flareplan'; setView('body'); };
   const fb = document.getElementById('finishBtn'); if (fb) fb.onclick = openRecap;
+  const ws = document.getElementById('wkStart'); if (ws) ws.onclick = () => { markStarted(WORKOUTS[curIdx].date); renderDay(); };
+  const wr = document.getElementById('wkReset'); if (wr) wr.onclick = () => { if (confirm('Reset the workout timer?')){ clearStarted(WORKOUTS[curIdx].date); renderDay(); } };
   const sb = document.getElementById('skipBtn'); if (sb) sb.onclick = openSkipSheet;
   const su = document.getElementById('skipUndo'); if (su) su.onclick = undoSkip;
 }
