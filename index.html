@@ -3819,6 +3819,7 @@ function alertRestWeb(){
 function tickRest(){
   const bar = document.getElementById('restbar');
   if (!bar) return;
+  try{ if (!restT) localStorage.removeItem('cairnlabs_rest'); else if (restT._sv !== restT.end){ restT._sv = restT.end; localStorage.setItem('cairnlabs_rest', JSON.stringify({ end:restT.end, total:restT.total, label:restT.label })); } }catch(e){}
   if (!restT){
     bar.hidden = true; bar.classList.remove('go');
     document.body.classList.remove('restshown');
@@ -3842,6 +3843,8 @@ function tickRest(){
   document.getElementById('rFill').style.width = Math.max(0, Math.min(100, (1-left/restT.total)*100))+'%';
 }
 
+/* If the phone closes the app mid-rest, pick the countdown back up when it reopens. */
+try{ const r = JSON.parse(localStorage.getItem('cairnlabs_rest') || 'null'); if (r && r.end && r.end + 6000 > Date.now()){ restT = { end:r.end, total:r.total, label:r.label, fired: r.end <= Date.now(), doneAt: r.end }; restInt = setInterval(tickRest, 250); setTimeout(tickRest, 0); } }catch(e){}
 const CAIRN_LOGO = '<svg class="clogo" viewBox="0 0 100 100" aria-hidden="true"><g stroke="var(--bg)" stroke-width="1.6"><ellipse cx="50" cy="69" rx="31" ry="12" style="fill:var(--accent)"/><ellipse cx="48" cy="54" rx="25" ry="11" style="fill:color-mix(in srgb,var(--accent) 84%,#000)"/><ellipse cx="52" cy="40" rx="19" ry="10" style="fill:color-mix(in srgb,var(--accent) 82%,#fff)"/><ellipse cx="49" cy="28" rx="12" ry="8.5" style="fill:color-mix(in srgb,var(--accent) 92%,#000)"/></g></svg>';
 /* ===== muscle map =====
    Figure polygons adapted from react-body-highlighter (MIT License, Copyright (c) 2020 GV79). */
