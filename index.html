@@ -824,6 +824,72 @@ function musclesFor(item){
 }
 
 /* ===== state ===== */
+/* Query cache: the same read made twice within a minute is answered from memory, and any write to a collection throws that collection's cached reads away. Tabs stop re-downloading the same history. */
+function cacheDb(raw){
+  const store = new Map(), TTL = 90000;
+  const FULL = 'logs|orderBy' + JSON.stringify(['date','asc']) + '>limit' + JSON.stringify([5000]);
+  let full = null;                       /* every log doc, once downloaded; other log reads are answered from it */
+  const top = (path) => String(path).split('/')[0];
+  const drop = (c) => { for (const k of [...store.keys()]) if (k.split('|')[0] === c) store.delete(k); if (c === 'logs') full = null; if (['logs','cardio','readiness','bodyweight'].includes(c)) trailCache = null; routeCache = null; };
+  const cmp = { '==':(x,y)=>x===y, '<':(x,y)=>x<y, '<=':(x,y)=>x<=y, '>':(x,y)=>x>y, '>=':(x,y)=>x>=y };
+  const mem = (chain) => {
+    const wh = [], ord = []; let lim = 0;
+    for (const c of chain){
+      const i = c.indexOf('['), m = c.slice(0, i), a = JSON.parse(c.slice(i));
+      if (m === 'where' && cmp[a[1]]) wh.push(a); else if (m === 'orderBy') ord.push(a); else if (m === 'limit') lim = a[0]; else return null;
+    }
+    let ds = full.slice();
+    wh.forEach(([f,o,v]) => { ds = ds.filter(d => { const x = d.data()[f]; return x !== undefined && cmp[o](x, v); }); });
+    ord.forEach(([f,dir]) => { ds = ds.filter(d => d.data()[f] !== undefined); ds.sort((x,y) => { const a = x.data()[f], b = y.data()[f]; return (a > b ? 1 : a < b ? -1 : 0) * (dir === 'desc' ? -1 : 1); }); });
+    if (lim) ds = ds.slice(0, lim);
+    return { docs: ds, empty: !ds.length, size: ds.length, forEach: (fn) => ds.forEach(fn) };
+  };
+  const wrapQ = (q, coll, chain) => new Proxy(q, { get(t, k){
+    if (k === 'get') return (...a) => {
+      if (coll === 'logs' && full){ const r = mem(chain); if (r) return Promise.resolve(r); }
+      const key = coll + '|' + chain.join('>'), hit = store.get(key);
+      if (hit && Date.now() - hit.t < TTL) return hit.p;
+      const p = t.get(...a); store.set(key, { t: Date.now(), p });
+      p.then(r => { if (key === FULL && r.docs.length < 5000) full = r.docs.slice(); }, () => store.delete(key));
+      return p;
+    };
+    const v = t[k];
+    if (['where','orderBy','limit','limitToLast','startAt','startAfter','endAt','endBefore'].includes(k)) return (...a) => wrapQ(v.apply(t, a), coll, chain.concat(k + JSON.stringify(a)));
+    if (k === 'doc') return (id) => wrapDoc(t.doc(id), coll);
+    if (k === 'add') return (...a) => { drop(coll); return v.apply(t, a); };
+    return typeof v === 'function' ? v.bind(t) : v;
+  }});
+  const wrapDoc = (d, coll) => new Proxy(d, { get(t, k){
+    const v = t[k];
+    if (k === 'set' || k === 'delete'){
+      return (...a) => {
+        if (coll === 'logs' && full){
+          const id = t.id, i = full.findIndex(x => x.id === id);
+          if (k === 'delete'){ if (i >= 0) full.splice(i, 1); }
+          else if (a[1] && a[1].merge){ full = null; }
+          else { const data = JSON.parse(JSON.stringify(a[0])); const fd = { id, exists: true, data: () => data, ref: t }; if (i >= 0) full[i] = fd; else full.push(fd); }
+        }
+        for (const key of [...store.keys()]) if (key.split('|')[0] === coll && key !== FULL) store.delete(key);
+        store.delete(FULL);
+        if (coll !== 'logs') drop(coll); else { trailCache = null; routeCache = null; }
+        return v.apply(t, a);
+      };
+    }
+    if (k === 'update') return (...a) => { drop(coll); return v.apply(t, a); };
+    if (k === 'get') return (...a) => {
+      const key = coll + '|doc:' + t.id, hit = store.get(key);
+      if (hit && Date.now() - hit.t < TTL) return hit.p;
+      const p = v.apply(t, a); store.set(key, { t: Date.now(), p }); p.catch(() => store.delete(key));
+      return p;
+    };
+    return typeof v === 'function' ? v.bind(t) : v;
+  }});
+  return new Proxy(raw, { get(t, k){
+    if (k === 'collection') return (name) => wrapQ(t.collection(name), top(name), []);
+    if (k === 'doc') return (path) => wrapDoc(t.doc(path), top(path));
+    const v = t[k]; return typeof v === 'function' ? v.bind(t) : v;
+  }});
+}
 let db = null;
 let offline = false;
 let maxes = { squat:455, bench:325, deadlift:445, bodyweight:205 };
@@ -997,6 +1063,7 @@ async function init(){
   try{
     window.CAIRN_LOGO = CAIRN_LOGO;
     db = await window.cairnDb();
+    db = cacheDb(db);
   }catch(e){ db = null; }
   maybeWelcome();
   if (window.CAIRN_FRESH){
