@@ -668,6 +668,21 @@ button, input, select, textarea, .chip, .tabbar *, .lab, .rtsvg text, .sum span,
 .setrow input{ font-family:var(--mono); }
 input, select, textarea{ font-size:16px; }
 .rtin{ font-size:16px; }
+
+/* stage 4: cardio, races */
+.lab{ font-size:10.5px; letter-spacing:.1em; color:var(--muted); margin:14px 0 6px; font-family:var(--mono); }
+.crow{ display:flex; justify-content:space-between; align-items:center; gap:10px; padding:9px 0; border-bottom:1px solid var(--line); font-size:14px; }
+.crow b{ color:var(--fg); }
+.crgrid{ display:grid; gap:10px; margin-top:10px; }
+.crin{ width:100%; box-sizing:border-box; font-size:16px; border:1.5px solid var(--line); border-bottom:2px solid var(--fg); background:transparent; color:var(--fg); padding:9px 8px; border-radius:0; font-family:var(--sans); font-weight:500; margin-top:4px; }
+select.crin{ appearance:none; }
+.cardiocard{ margin-top:10px; }
+.rctypes{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.rctype{ text-align:left; background:transparent; border:1.5px solid var(--line); color:var(--fg); font:inherit; padding:9px 10px; border-radius:0; display:flex; flex-direction:column; gap:2px; }
+.rctype small{ color:var(--muted); font-size:11px; }
+.rctype.on{ border-color:var(--accent); background:color-mix(in srgb,var(--accent) 12%,transparent); }
+.wpform{ border:1.5px solid var(--line); padding:10px; margin-top:8px; display:grid; gap:8px; }
+.rtchip.race{ border-style:dashed; }
 </style>
 <script src="cairn-db.js"></script>
 </head>
@@ -1105,7 +1120,8 @@ function renderDay(){
   const visible = editMode ? all : all.filter(it => !it.hidden);
 
   if (!visible.length){
-    main.innerHTML = `<div class="dayempty">${all.length ? 'Everything hidden for today.' : 'Rest day. Nothing scheduled.'}</div>${editMode ? addFormHtml() : ''}`;
+    main.innerHTML = `<div class="dayempty">${all.length ? 'Everything hidden for today.' : 'Rest day. Nothing scheduled.'}</div><div id="cardioCard"></div>${editMode ? addFormHtml() : ''}`;
+    drawCardioCard();
     if (editMode) wireAddForm();
     return;
   }
@@ -1211,9 +1227,11 @@ function renderDay(){
 
   if (editMode) html += addFormHtml();
 
+  html += '<div id="cardioCard"></div>';
   html += finishBarHtml();
   html += skipBtnHtml();
   main.innerHTML = html;
+  drawCardioCard();
   wireDayInputs();
   wireToday(); updateCairn();
   if (editMode) wireEditControls();
@@ -1595,34 +1613,28 @@ async function renderGoals(){
   }).join('');
   let raceHtml;
   if (race){
-    const toRace = dayDiff(today, race.date), planStart = addDaysStr(mondayOf(race.date), -77), toPlan = dayDiff(today, planStart);
+    const cd = fmtCountdown(race.date), toRace = dayDiff(today, race.date), planStart = addDaysStr(mondayOf(race.date), -77), toPlan = dayDiff(today, planStart);
     raceHtml = `<div class="card"><div class="exhead"><div class="exname">${esc(race.name)}</div><div class="chips">${race.place ? `<span class="chip">${esc(race.place)}</span>` : ''}</div></div>
       <div class="statrow">
-        <div class="stat"><div class="sv tabular">${toRace > 0 ? toRace : 0}</div><div class="sl">To race day</div></div>
-        <div class="stat"><div class="sv tabular">${toPlan > 0 ? toPlan : 'Now'}</div><div class="sl">${toPlan > 0 ? 'To plan' : 'Plan window'}</div></div>
+        <div class="stat"><div class="sv tabular">${cd.big}</div><div class="sl">${cd.small || 'Race'}</div></div>
         <div class="stat"><div class="sv" style="font-size:15px;">${fmtDate(race.date)}</div><div class="sl">Race day</div></div>
       </div>
-      <div class="notes" style="margin-top:8px;">A 12 week race plan would start ${fmtDate(planStart)}.</div></div>`;
-  } else raceHtml = `<div class="card"><div class="exname">Race or event</div><div class="notes">Optional. Add a date to get a countdown and a suggested plan start. Nothing is set until you add one.</div></div>`;
+      ${toRace > 0 && toPlan > 0 ? `<div class="notes" style="margin-top:8px;">A 12 week race plan would start ${fmtDate(planStart)}.</div>` : ''}
+      <div class="rbtns" style="margin-top:8px;"><button class="ghostbtn" id="grTrail">View trail</button><button class="ghostbtn" id="grEdit">Edit race</button></div></div>`;
+  } else raceHtml = `<div class="card"><div class="exname">Race or event</div><div class="notes">Optional. Add any race to get a countdown, a trail of waypoints and a roadmap. Nothing is set until you add one.</div><div class="rbtns" style="margin-top:8px;"><button class="ghostbtn" id="grAdd">+ Add a race</button></div></div>`;
   document.getElementById('goalBody').innerHTML = raceHtml + `
     <div class="jlabel" style="margin-top:10px;">Strength goals</div>${rows}
     <div class="notes">Bars use your best estimated max from logged sets, or your tested max if higher.</div>
     <details class="card" style="margin-top:10px;"><summary style="cursor:pointer;">Edit goals</summary>
       <div style="margin-top:8px;">${lifts.map(([id, name]) => `<label class="jlabel">${name} goal (lb)<input type="number" inputmode="numeric" id="gg_${id}" value="${goals[goalKey[id]] ?? ''}"></label>`).join('')}</div>
-      <div class="jlabel" style="margin-top:8px;">Race</div>
-      <input type="text" id="gr_name" value="${esc(race ? race.name : '')}" placeholder="Race name"><input type="text" id="gr_place" value="${esc(race ? race.place || '' : '')}" placeholder="Place (optional)" style="margin-top:6px;"><input type="date" id="gr_date" value="${race ? race.date : ''}" style="margin-top:6px;">
-      <button class="btn" id="ggSave" style="margin-top:8px;">Save goals</button>${race ? '<button class="ghostbtn" id="grClear" style="margin-top:8px;">Remove race</button>' : ''}</details>`;
-  const gc = document.getElementById('grClear');
-  if (gc) gc.onclick = async () => { try{ await db.doc('state/race').delete(); }catch(e){ console.warn(e); } renderGoals(); };
+<button class="btn" id="ggSave" style="margin-top:8px;">Save goals</button></details>`;
+  const openR = () => openRaceSheet(race, renderGoals);
+  ['grAdd','grEdit'].forEach(i => { const e = document.getElementById(i); if (e) e.onclick = openR; });
+  const gt = document.getElementById('grTrail'); if (gt) gt.onclick = () => { routeLift = 'race'; subs.progress = 'route'; renderSubView(); };
   document.getElementById('ggSave').onclick = async () => {
     const g = {}; lifts.forEach(([id]) => { const v = document.getElementById('gg_' + id).value; g[goalKey[id]] = v === '' ? null : Number(v); });
     goals = Object.assign({}, goals, g);
-    const rd = document.getElementById('gr_date').value;
-    const r = { name: document.getElementById('gr_name').value.trim() || 'Race', place: document.getElementById('gr_place').value.trim(), date: rd };
-    try{
-      await db.doc('state/goals').set(Object.assign({}, goals, { updatedAt: new Date().toISOString() }));
-      if (rd) await db.doc('state/race').set(Object.assign({}, r, { updatedAt: new Date().toISOString() }));
-    }catch(e){ console.warn(e); }
+    try{ await db.doc('state/goals').set(Object.assign({}, goals, { updatedAt: new Date().toISOString() })); }catch(e){ console.warn(e); }
     renderGoals();
   };
 }
@@ -1698,6 +1710,301 @@ async function renderRecap(){
   document.getElementById('recapSum').onclick = () => { document.getElementById('recapCmp').textContent = compareLb(s.ton) + ' Tap to see another.'; };
 }
 
+
+/* ===== Cardio log (miles stored; shown in your units) ===== */
+const CARDIO_KINDS = [['run','Run'],['bike','Bike'],['swim','Swim'],['row','Row'],['hike','Hike'],['other','Other']];
+const KIND_NOUN = { run:'run', bike:'ride', swim:'swim', row:'row', hike:'hike', other:'session', any:'session' };
+let cardioCache = null;
+async function loadCardio(force){
+  if (cardioCache && !force) return cardioCache;
+  if (offline || !db){ cardioCache = []; return cardioCache; }
+  try{
+    const snap = await db.collection('cardio').orderBy('date','desc').limit(3000).get();
+    cardioCache = snap.docs.map(d => Object.assign({ id:d.id }, d.data())).filter(x => x && x.date);
+  }catch(e){ console.warn('cardio load failed', e); cardioCache = []; }
+  return cardioCache;
+}
+const trimNum = (n) => String(Math.round(n * 10) / 10).replace(/\.0$/, '');
+function fmtDist(mi){ const m = Number(mi) || 0; return isMetric() ? trimNum(m * 1.609344) + ' km' : trimNum(m) + ' mi'; }
+function distIn(v){ const n = Number(v) || 0; return isMetric() ? n / 1.609344 : n; }
+function distOut(mi){ return isMetric() ? Math.round(mi * 1.609344 * 100) / 100 : Math.round(mi * 100) / 100; }
+function fmtDur(min){
+  const t = Math.round((Number(min) || 0) * 60), h = Math.floor(t / 3600), m = Math.floor((t % 3600) / 60), s = t % 60;
+  return h ? `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}` : `${m}:${String(s).padStart(2,'0')}`;
+}
+function parseDur(str){
+  const t = String(str || '').trim(); if (!t) return 0;
+  if (!t.includes(':')) return Number(t) || 0;
+  const p = t.split(':').map(Number); if (p.some(isNaN)) return 0;
+  return p.length === 3 ? p[0] * 60 + p[1] + p[2] / 60 : p[0] + (p[1] || 0) / 60;
+}
+function paceText(c){ if (!(c.mi > 0 && c.min > 0)) return ''; const per = c.min / (isMetric() ? c.mi * 1.609344 : c.mi); return fmtDur(per) + (isMetric() ? ' /km' : ' /mi'); }
+function cardioLine(c){
+  const k = (CARDIO_KINDS.find(x => x[0] === c.kind) || ['', 'Cardio'])[1];
+  const bits = [c.mi > 0 ? fmtDist(c.mi) : '', c.min > 0 ? fmtDur(c.min) : '', paceText(c)].filter(Boolean);
+  return `<b>${k}</b> ${bits.join(' · ')}`;
+}
+async function drawCardioCard(){
+  const el = document.getElementById('cardioCard'); if (!el) return;
+  if (offline || !db){ el.innerHTML = ''; return; }
+  const date = WORKOUTS[curIdx].date;
+  const all = await loadCardio();
+  const el2 = document.getElementById('cardioCard'); if (!el2) return;
+  const mine = all.filter(x => x.date === date);
+  const wk = mondayOf(date), wkMi = all.filter(x => mondayOf(x.date) === wk).reduce((t, x) => t + (Number(x.mi) || 0), 0);
+  el2.innerHTML = `<div class="card cardiocard"><div class="exhead"><div class="exname">Cardio</div><div class="chips">${wkMi ? `<span class="chip">${fmtDist(wkMi)} this week</span>` : ''}</div></div>
+    ${mine.length ? mine.map(c => `<div class="crow"><span>${cardioLine(c)}</span><button class="rtx" data-cdel="${esc(c.id)}" aria-label="Delete session">✕</button></div>`).join('') : '<div class="notes">Optional. Log a run, ride, swim or hike and race trails pick it up.</div>'}
+    <div class="rbtns"><button class="ghostbtn" id="cardioAdd">+ Add cardio</button></div></div>`;
+  document.getElementById('cardioAdd').onclick = () => openCardioSheet(date);
+  el2.querySelectorAll('[data-cdel]').forEach(b => b.onclick = async () => { try{ await db.collection('cardio').doc(b.dataset.cdel).delete(); }catch(e){ console.warn(e); } await loadCardio(true); drawCardioCard(); if (view === 'progress' && curSub() === 'cardio') renderCardioPage(); });
+}
+function openCardioSheet(date){
+  let kind = 'run';
+  const u = isMetric() ? 'km' : 'mi';
+  openSheet(`<div class="plhead"><h2 style="font-size:26px;">Log cardio</h2><button class="ghostbtn" id="crClose">Close</button></div>
+    <div class="notes">${fmtDate(date)}</div>
+    <div class="rtchips" id="crKinds" style="margin-top:8px;">${CARDIO_KINDS.map(([k, n]) => `<button type="button" class="rtchip ${k===kind?'on':''}" data-ck="${k}">${n}</button>`).join('')}</div>
+    <div class="crgrid"><label class="jlabel">Distance (${u})<input class="rtin crin" id="crDist" type="number" inputmode="decimal" step="any" placeholder="6.2"></label>
+      <label class="jlabel">Time (mm:ss or h:mm:ss)<input class="rtin crin" id="crTime" type="text" inputmode="numeric" placeholder="52:10"></label>
+      <label class="jlabel">Avg heart rate (optional)<input class="rtin crin" id="crHr" type="number" inputmode="numeric" placeholder="150"></label>
+      <label class="jlabel">Note (optional)<input class="rtin crin" id="crNote" type="text" placeholder="easy, flat route"></label></div>
+    <div class="notes" id="crPace" style="margin-top:6px;"></div>
+    <div class="rbtns" style="margin-top:10px;"><button class="savebtn rtgo" id="crSave">Save session</button></div>`);
+  document.getElementById('crClose').onclick = closeSheet;
+  document.querySelectorAll('[data-ck]').forEach(b => b.onclick = () => { kind = b.dataset.ck; document.querySelectorAll('[data-ck]').forEach(x => x.classList.toggle('on', x === b)); });
+  const upd = () => { const mi = distIn(document.getElementById('crDist').value), min = parseDur(document.getElementById('crTime').value); document.getElementById('crPace').textContent = (mi > 0 && min > 0) ? 'Pace ' + paceText({ mi, min }) : ''; };
+  document.getElementById('crDist').oninput = upd; document.getElementById('crTime').oninput = upd;
+  document.getElementById('crSave').onclick = async () => {
+    const mi = distIn(document.getElementById('crDist').value), min = parseDur(document.getElementById('crTime').value);
+    if (!(mi > 0) && !(min > 0)) return;
+    const hr = Number(document.getElementById('crHr').value) || null, note = document.getElementById('crNote').value.trim();
+    const doc = { date, kind, mi: Math.round(mi * 1000) / 1000, min: Math.round(min * 100) / 100, createdAt: new Date().toISOString() };
+    if (hr) doc.hr = hr; if (note) doc.note = note;
+    try{ await db.collection('cardio').doc(date + '__' + Date.now()).set(doc); }catch(e){ console.warn(e); }
+    await loadCardio(true); closeSheet(); drawCardioCard(); if (view === 'progress' && curSub() === 'cardio') renderCardioPage();
+    if (view === 'progress' && curSub() === 'route') renderRoute(true);
+  };
+}
+async function renderCardioPage(){
+  const main = mainEl();
+  if (curSub() !== 'cardio') return;
+  main.innerHTML = '<div class="notes">Loading...</div>';
+  if (offline || !db){ main.innerHTML = '<div class="notes">Not connected.</div>'; return; }
+  const all = await loadCardio(true);
+  if (curSub() !== 'cardio') return;
+  const today = todayStr(), wk = mondayOf(today);
+  const sum = (a) => a.reduce((t, x) => t + (Number(x.mi) || 0), 0);
+  const thisWk = all.filter(x => mondayOf(x.date) === wk), lastWk = all.filter(x => mondayOf(x.date) === addDaysStr(wk, -7));
+  const by = CARDIO_KINDS.map(([k, n]) => { const a = all.filter(x => x.kind === k); return a.length ? { n, total: sum(a), longest: Math.max(...a.map(x => Number(x.mi) || 0)), count: a.length } : null; }).filter(Boolean);
+  main.innerHTML = `<div class="rt"><h2 class="rttitle" style="margin-top:0">Cardio</h2>
+    <div class="notes">Runs, rides, swims and hikes you log. Race trails count these.</div>
+    <div class="rbtns" style="margin:8px 0 4px;"><button class="savebtn rtgo" id="cpAdd">Log a session</button></div>
+    <div class="sum"><div><span>THIS WEEK</span><b>${fmtDist(sum(thisWk))}</b></div><div><span>LAST WEEK</span><b>${fmtDist(sum(lastWk))}</b></div><div><span>ALL TIME</span><b>${fmtDist(sum(all))}</b></div></div>
+    ${by.length ? `<div class="lab">BY TYPE</div>${by.map(b => `<div class="crow"><span><b>${b.n}</b> ${b.count} sessions</span><span>${fmtDist(b.total)} total · longest ${fmtDist(b.longest)}</span></div>`).join('')}` : ''}
+    <div class="lab">RECENT</div>
+    ${all.length ? all.slice(0, 25).map(c => `<div class="crow"><span>${fmtDate(c.date)} · ${cardioLine(c)}${c.note ? `<span class="notes"> · ${esc(c.note)}</span>` : ''}</span><button class="rtx" data-cdel="${esc(c.id)}" aria-label="Delete session">✕</button></div>`).join('') : '<div class="notes">Nothing logged yet.</div>'}</div>`;
+  document.getElementById('cpAdd').onclick = () => openCardioSheet(todayStr());
+  main.querySelectorAll('[data-cdel]').forEach(b => b.onclick = async () => { try{ await db.collection('cardio').doc(b.dataset.cdel).delete(); }catch(e){ console.warn(e); } renderCardioPage(); });
+}
+
+/* ===== Races: any distance, starter waypoints you can edit, countdown ===== */
+const W = (kind, sport, mi, min) => ({ kind, sport, mi, min });
+const RACE_TYPES = [
+  { id:'obstacle', name:'Obstacle race', sub:'Spartan, Tough Mudder, OCR', fam:'obstacle', wps:[ {kind:'hills',hours:2}, {kind:'count',what:'burpees',n:100}, {kind:'long',sport:'run',mi:3}, {kind:'hills',hours:10}, {kind:'count',what:'pullups',n:250}, {kind:'count',what:'burpees',n:250}, {kind:'long',sport:'run',mi:6} ] },
+  { id:'run5k', name:'5K or 10K', sub:'3.1 to 6.2 mi', fam:'run', wps:[ W('long','run',1), W('long','run',2), W('long','run',3.1), W('total','run',25), W('long','run',5), W('long','run',6.2) ] },
+  { id:'half', name:'Half marathon', sub:'13.1 mi', fam:'run', wps:[ W('long','run',3), W('total','run',50), W('pace','run',7,60), W('long','run',10), W('total','run',200) ] },
+  { id:'marathon', name:'Marathon', sub:'26.2 mi', fam:'run', wps:[ W('long','run',6), W('total','run',100), W('long','run',13.1), W('long','run',18), W('total','run',300), W('long','run',22) ] },
+  { id:'tri_sprint', name:'Triathlon, sprint', sub:'0.5 mi swim, 12 bike, 3.1 run', fam:'tri', wps:[ W('long','swim',0.5), W('long','bike',12), W('long','run',3.1), W('total','bike',100), W('total','run',40) ] },
+  { id:'tri_oly', name:'Triathlon, Olympic', sub:'0.9 mi swim, 25 bike, 6.2 run', fam:'tri', wps:[ W('long','swim',0.9), W('long','bike',25), W('long','run',6.2), W('total','bike',200), W('total','run',80) ] },
+  { id:'tri_70', name:'Half-iron (70.3)', sub:'1.2 mi swim, 56 bike, 13.1 run', fam:'tri', wps:[ W('long','swim',1.2), W('long','bike',56), W('long','run',13.1), W('total','swim',15), W('total','bike',400), W('total','run',150) ] },
+  { id:'tri_140', name:'Ironman', sub:'2.4 mi swim, 112 bike, 26.2 run', fam:'tri', wps:[ W('long','swim',2.4), W('long','bike',70), W('long','run',13.1), W('long','bike',112), W('total','swim',30), W('total','bike',1000), W('total','run',300), W('long','run',20) ] },
+  { id:'custom', name:'Something else', sub:'Your own waypoints', fam:'run', wps:[] }
+];
+const raceType = (id) => RACE_TYPES.find(t => t.id === id) || RACE_TYPES[RACE_TYPES.length - 1];
+function wpLabel(w){
+  const noun = KIND_NOUN[w.sport || 'any'];
+  if (w.kind === 'total') return (!w.sport || w.sport === 'any') ? fmtDist(w.mi) + ' logged' : fmtDist(w.mi) + ' ' + noun + ' total';
+  if (w.kind === 'long') return fmtDist(w.mi) + ' ' + noun;
+  if (w.kind === 'pace') return fmtDist(w.mi) + ' in ' + fmtDur(w.min);
+  if (w.kind === 'hills') return w.hours + ' hr hills and rucks';
+  if (w.kind === 'count') return w.n + ' ' + (w.what === 'pullups' ? 'pull-ups' : 'burpees');
+  return w.label || 'Waypoint';
+}
+function wpEval(w, ctx){
+  const rows = ctx.cardio.filter(x => !w.sport || w.sport === 'any' || x.kind === w.sport);
+  const mi = (x) => Number(x.mi) || 0;
+  if (w.kind === 'total'){ const v = rows.reduce((t, x) => t + mi(x), 0); return { done: v >= w.mi, frac: Math.min(1, v / w.mi), note: fmtDist(v) + ' of ' + fmtDist(w.mi) }; }
+  if (w.kind === 'long'){ const v = Math.max(0, ...rows.map(mi)); return { done: v >= w.mi, frac: Math.min(1, v / w.mi), note: 'longest ' + fmtDist(v) }; }
+  if (w.kind === 'pace'){
+    const ok = rows.filter(x => mi(x) >= w.mi && x.min > 0).map(x => x.min * (w.mi / mi(x)));
+    const longest = Math.max(0, ...rows.map(mi));
+    if (!ok.length) return { done:false, frac: Math.min(1, longest / w.mi) * 0.5, note: 'no ' + fmtDist(w.mi) + ' session yet, longest ' + fmtDist(longest) };
+    const best = Math.min(...ok);
+    return { done: best <= w.min, frac: best <= w.min ? 1 : Math.min(1, 0.5 + 0.5 * (w.min / best)), note: 'best ' + fmtDur(best) + ' for ' + fmtDist(w.mi) + (best > w.min ? ', ' + fmtDur(best - w.min) + ' to go' : '') };
+  }
+  if (w.kind === 'hills'){ const f = ctx.fams.find(x => x.id === 'trail'), v = f ? f.value : 0; return { done: v >= w.hours, frac: Math.min(1, v / w.hours), note: v.toFixed(1) + ' of ' + w.hours + ' hr' }; }
+  if (w.kind === 'count'){ const f = ctx.fams.find(x => x.id === (w.what === 'pullups' ? 'pull' : 'burp')), v = f ? Math.round(f.value) : 0; return { done: v >= w.n, frac: Math.min(1, v / w.n), note: v + ' of ' + w.n }; }
+  return { done: !!w.done, frac: w.done ? 1 : 0, note: w.done ? 'checked off' : 'tap to check off' };
+}
+function fmtCountdown(dateStr){
+  const d = dayDiff(todayStr(), dateStr);
+  if (d < 0) return { big: 'Race day passed', small: '' };
+  if (d === 0) return { big: 'Race day', small: 'Today' };
+  if (d < 7) return { big: d + (d === 1 ? ' day' : ' days'), small: 'To race day' };
+  const wk = Math.floor(d / 7), rem = d % 7;
+  return { big: wk + ' wk' + (rem ? ' ' + rem + ' d' : ''), small: 'To race day' };
+}
+async function loadRace(){
+  if (offline || !db) return null;
+  try{ const r = await db.doc('state/race').get(); if (r.exists && r.data() && r.data().date) return r.data(); }catch(e){}
+  return null;
+}
+function openRaceSheet(existing, done){
+  const rs = existing ? { type: existing.type || 'custom', name: existing.name || '', place: existing.place || '', date: existing.date || '', wps: (existing.wps || []).map(w => Object.assign({}, w)) }
+                      : { type: null, name: '', place: '', date: '', wps: [] };
+  let adding = false;
+  const collect = () => { const g = (id) => document.getElementById(id); if (g('rcName')) rs.name = g('rcName').value; if (g('rcPlace')) rs.place = g('rcPlace').value; if (g('rcDate')) rs.date = g('rcDate').value; };
+  const paint = () => {
+    openSheet(`<div class="plhead"><h2 style="font-size:26px;">${existing ? 'Edit race' : 'Add a race'}</h2><button class="ghostbtn" id="rcClose">Close</button></div>
+      <div class="notes">Optional. Nothing is set until you save.</div>
+      <div class="lab">TYPE</div>
+      <div class="rctypes">${RACE_TYPES.map(t => `<button type="button" class="rctype ${rs.type === t.id ? 'on' : ''}" data-rt="${t.id}"><span>${t.name}</span><small>${t.sub}</small></button>`).join('')}</div>
+      <div class="crgrid"><label class="jlabel">Name<input class="rtin crin" id="rcName" type="text" value="${esc(rs.name)}" placeholder="Race name"></label>
+        <label class="jlabel">Date<input class="rtin crin" id="rcDate" type="date" value="${esc(rs.date)}"></label>
+        <label class="jlabel">Place (optional)<input class="rtin crin" id="rcPlace" type="text" value="${esc(rs.place)}" placeholder="City"></label></div>
+      <div class="lab">WAYPOINTS (EDIT OR DELETE)</div>
+      ${rs.wps.length ? rs.wps.map((w, i) => `<div class="crow"><span>${esc(wpLabel(w))}</span><button class="rtx" data-wd="${i}" aria-label="Remove waypoint">✕</button></div>`).join('') : '<div class="notes">None yet. Pick a type for starter waypoints, or add your own.</div>'}
+      ${adding ? `<div class="wpform"><label class="jlabel">Kind<select id="wkKind" class="rtin crin"><option value="total">Total distance logged</option><option value="long">Longest single session</option><option value="pace">Time goal (distance in a time)</option><option value="manual">Check off myself</option></select></label>
+        <label class="jlabel">Sport<select id="wkSport" class="rtin crin"><option value="run">Run</option><option value="bike">Bike</option><option value="swim">Swim</option><option value="any">Any cardio</option></select></label>
+        <label class="jlabel">Distance (${isMetric() ? 'km' : 'mi'})<input id="wkDist" class="rtin crin" type="number" inputmode="decimal" step="any"></label>
+        <label class="jlabel">Time goal (mm:ss, for time goals)<input id="wkTime" class="rtin crin" type="text" inputmode="numeric" placeholder="60:00"></label>
+        <label class="jlabel">Name (for check off)<input id="wkName" class="rtin crin" type="text" placeholder="Open water swim"></label>
+        <div class="rbtns"><button class="savebtn rtgo" id="wkSave">Add waypoint</button><button class="ghostbtn" id="wkCancel">Cancel</button></div></div>`
+        : '<div class="rbtns"><button class="ghostbtn" id="wkNew">+ Add a waypoint</button></div>'}
+      <div class="rbtns" style="margin-top:14px;"><button class="savebtn rtgo" id="rcSave">Save race</button>${existing ? '<button class="ghostbtn danger" id="rcDel">Remove race</button>' : ''}</div>
+      <div class="notes" id="rcMsg"></div>`);
+    document.getElementById('rcClose').onclick = closeSheet;
+    document.querySelectorAll('[data-rt]').forEach(b => b.onclick = () => {
+      collect(); const t = raceType(b.dataset.rt); rs.type = t.id; rs.wps = t.wps.map(w => Object.assign({}, w));
+      if (!rs.name && t.id !== 'custom') rs.name = t.name; paint();
+    });
+    document.querySelectorAll('[data-wd]').forEach(b => b.onclick = () => { collect(); rs.wps.splice(Number(b.dataset.wd), 1); paint(); });
+    const nw = document.getElementById('wkNew'); if (nw) nw.onclick = () => { collect(); adding = true; paint(); };
+    const wc = document.getElementById('wkCancel'); if (wc) wc.onclick = () => { collect(); adding = false; paint(); };
+    const ws = document.getElementById('wkSave'); if (ws) ws.onclick = () => {
+      const kind = document.getElementById('wkKind').value, sport = document.getElementById('wkSport').value, mi = distIn(document.getElementById('wkDist').value), min = parseDur(document.getElementById('wkTime').value);
+      let w;
+      if (kind === 'manual'){ const l = document.getElementById('wkName').value.trim(); if (!l) return; w = { kind:'manual', label:l }; }
+      else if (kind === 'pace'){ if (!(mi > 0 && min > 0)) return; w = { kind, sport, mi: Math.round(mi * 100) / 100, min }; }
+      else { if (!(mi > 0)) return; w = { kind, sport, mi: Math.round(mi * 100) / 100 }; }
+      collect(); rs.wps.push(w); adding = false; paint();
+    };
+    document.getElementById('rcSave').onclick = async () => {
+      collect();
+      if (!rs.date){ document.getElementById('rcMsg').textContent = 'Pick the race date.'; return; }
+      const doc = { name: rs.name.trim() || raceType(rs.type).name || 'Race', place: rs.place.trim(), date: rs.date, type: rs.type || 'custom', wps: rs.wps, updatedAt: new Date().toISOString() };
+      try{ await db.doc('state/race').set(doc); }catch(e){ console.warn(e); }
+      closeSheet(); if (done) done();
+    };
+    const rd = document.getElementById('rcDel'); if (rd) rd.onclick = async () => { try{ await db.doc('state/race').delete(); }catch(e){ console.warn(e); } if (routeLift === 'race') routeLift = 'squat'; closeSheet(); if (done) done(); };
+  };
+  paint();
+}
+
+/* ===== Race trail, countdown, generated roadmap ===== */
+function routeChipsHtml(cur, race){
+  return ROUTE_LIFTS.map(([i, n]) => `<button class="rtchip ${i===cur?'on':''}" data-rl="${i}">${n}</button>`).join('') +
+    (race ? `<button class="rtchip race ${cur==='race'?'on':''}" data-rl="race">Race</button>` : '');
+}
+async function renderRaceRoute(main, race, d, quiet){
+  const keepY = window.scrollY;
+  const cardio = await loadCardio();
+  if (curSub() !== 'route') return;
+  const ctx = { cardio, fams: d.fams };
+  const wps = (race.wps || []).map(w => Object.assign({ w }, wpEval(w, ctx)));
+  const pts = wps.map(e => ({ label: wpLabel(e.w), built: e.done }));
+  let k = 0; while (k < wps.length && wps[k].done) k++;
+  const over = dayDiff(todayStr(), race.date) <= 0;
+  pts.push({ label: race.name, built: over });
+  const frac = k < wps.length ? wps[k].frac : (over ? 1 : 0.9);
+  const cd = fmtCountdown(race.date);
+  const svg = routeSvg({ pts, k, frac, goalHit: false, endWord: '', youLabel: 'YOU', label: race.name + ' trail' });
+  const nextW = wps.find(e => !e.done);
+  main.innerHTML = `<div class="rt"><div class="rtchips">${routeChipsHtml('race', true)}</div>
+    <h2 class="rttitle">${esc(race.name)}</h2>
+    <div class="notes">${fmtDate(race.date)}${race.place ? ' · ' + esc(race.place) : ''}. Each stone is a waypoint on the way to race day. Tap Edit race to change them.</div>
+    <div class="sum"><div><span>COUNTDOWN</span><b>${cd.big}</b></div><div><span>WAYPOINTS</span><b>${wps.filter(e => e.done).length} of ${wps.length}</b></div><div><span>NEXT</span><b style="font-size:16px;text-align:right;">${nextW ? esc(wpLabel(nextW.w)) : 'Race day'}</b></div></div>
+    ${wps.length ? svg : '<div class="notes" style="margin:14px 0;">No waypoints yet. Add some in Edit race.</div>'}
+    <div class="lab">WAYPOINTS</div>
+    ${wps.map((e, i) => `<div class="crow"><span><b>${e.done ? '✓ ' : ''}${esc(wpLabel(e.w))}</b><span class="notes"> · ${esc(e.note)}</span></span>${e.w.kind === 'manual' ? `<button class="ghostbtn" data-wm="${i}">${e.w.done ? 'Undo' : 'Check off'}</button>` : ''}</div>`).join('')}
+    <div class="rbtns" style="margin-top:12px;"><button class="ghostbtn" id="rcEdit">Edit race</button><button class="ghostbtn" id="rcLog">+ Log cardio</button></div></div>`;
+  if (quiet) window.scrollTo(0, keepY);
+  main.querySelectorAll('[data-rl]').forEach(b => b.onclick = () => { routeLift = b.dataset.rl; renderRoute(); });
+  document.getElementById('rcEdit').onclick = () => openRaceSheet(race, () => renderRoute(true));
+  document.getElementById('rcLog').onclick = () => openCardioSheet(todayStr());
+  main.querySelectorAll('[data-wm]').forEach(b => b.onclick = async () => {
+    const w = race.wps[Number(b.dataset.wm)]; w.done = !w.done;
+    try{ await db.doc('state/race').set(Object.assign({}, race, { updatedAt: new Date().toISOString() })); }catch(e){ console.warn(e); }
+    renderRoute(true);
+  });
+}
+const RM_TEXT = {
+  obstacle: { Base:['Two lifting days, steady running, one weekly ruck or hill session.','Build the engine and joints before intensity.'], Build:['Keep two heavy days. Add carries, grip and climbing work.','Longer hills, back-to-back run and obstacle practice.'], Peak:['One lifting day to maintain.','Race-length efforts, burpee and pull-up volume, course-style sessions.'], Taper:['Light, short sessions.','Drop volume, keep a little speed, rest before race day.'] },
+  run: { Base:['Two full-body lifting days.','Easy mileage, mostly conversational pace. Add a little each week.'], Build:['Two lifting days, lower volume.','Longer weekly run, one tempo or pace session.'], Peak:['One light lifting day.','Longest runs and race-pace work.'], Taper:['Mobility and short lifts only.','Cut mileage, keep a few short race-pace efforts, rest.'] },
+  tri: { Base:['Two lifting days, kept short.','Build all three sports with easy aerobic volume. Swim technique first.'], Build:['Two lifting days, lower volume.','Longer bike and run, brick sessions (bike then run).'], Peak:['One light lifting day.','Race-length efforts in each sport, open water if you can.'], Taper:['Mobility and short lifts only.','Cut volume, keep short efforts in each sport, rest.'] }
+};
+function rmPhases(weeks, fam){
+  if (weeks < 3) return [['Taper', weeks]];
+  if (weeks < 8) return [['Build', weeks - 2], ['Taper', 2]];
+  const taper = fam === 'run' ? 2 : 3, peak = weeks >= 16 ? 4 : 3, rest = weeks - taper - peak, base = Math.round(rest * 0.4);
+  return [['Base', base], ['Build', rest - base], ['Peak', peak], ['Taper', taper]];
+}
+async function renderRoadmap(){
+  const main = mainEl();
+  if (curSub() !== 'roadmap') return;
+  main.innerHTML = '<div class="notes">Loading...</div>';
+  const race = await loadRace();
+  if (curSub() !== 'roadmap') return;
+  if (!race){
+    main.innerHTML = `<div class="notes">The roadmap is built from a race you add. Add one and it lays out base, build, peak and taper phases working backward from race day.</div>
+      <div class="card"><div class="exname">No race yet</div><div class="notes">Optional. Add any race or event, then change the waypoints to fit you.</div><div class="rbtns" style="margin-top:8px;"><button class="savebtn rtgo" id="rmAdd">Add a race</button></div></div>`;
+    document.getElementById('rmAdd').onclick = () => openRaceSheet(null, renderRoadmap);
+    return;
+  }
+  const days = dayDiff(todayStr(), race.date);
+  if (days < 0){
+    main.innerHTML = `<div class="notes">${esc(race.name)} has passed.</div><div class="rbtns"><button class="savebtn rtgo" id="rmAdd">Add the next race</button></div>`;
+    document.getElementById('rmAdd').onclick = () => openRaceSheet(race, renderRoadmap);
+    return;
+  }
+  let d = null, cardio = [];
+  try{ d = await loadTrail(); cardio = await loadCardio(); }catch(e){}
+  if (curSub() !== 'roadmap') return;
+  const fam = raceType(race.type).fam, txt = RM_TEXT[fam] || RM_TEXT.run;
+  const weeks = Math.max(1, Math.ceil(days / 7));
+  const phases = rmPhases(weeks, fam);
+  const left = d ? (race.wps || []).filter(w => !wpEval(w, { cardio, fams: d.fams }).done) : (race.wps || []);
+  const nonTaper = phases.filter(p => p[0] !== 'Taper').length || 1;
+  let wkAt = 0, wi = 0;
+  const startMon = mondayOf(todayStr());
+  const cards = phases.map((p, i) => {
+    const [name, n] = p, from = addDaysStr(startMon, wkAt * 7), to = addDaysStr(startMon, (wkAt + n) * 7 - 1);
+    let goal;
+    if (name === 'Taper') goal = 'Arrive rested. No new tests or big efforts.';
+    else { const per = Math.ceil(left.length / nonTaper), mine = left.slice(wi, wi + per); wi += per; goal = mine.length ? mine.map(wpLabel).join(', ') : 'Hold your fitness and stay healthy.'; }
+    const html = `<div class="card phase ${i === 0 ? 'now' : ''}"><div class="ptag">Phase ${i + 1} · ${n} week${n === 1 ? '' : 's'}</div>
+      <div class="exhead"><div class="exname">${name}</div><span class="chip">${fmtDate(from)} to ${fmtDate(to)}</span></div>
+      <div class="row2"><div class="jlabel">Strength</div><div class="jtext">${esc(txt[name][0])}</div></div>
+      <div class="row2"><div class="jlabel">Endurance</div><div class="jtext">${esc(txt[name][1])}</div></div>
+      <div class="row2"><div class="jlabel">${name === 'Taper' ? 'Goal' : 'Waypoints to hit'}</div><div class="jtext">${esc(goal)}</div></div></div>`;
+    wkAt += n; return html;
+  }).join('');
+  const cd = fmtCountdown(race.date);
+  main.innerHTML = `<div class="notes">Worked back from ${esc(race.name)} on ${fmtDate(race.date)} (${cd.big}). It is a guide, not a program. Your waypoints are spread across the phases.</div>${cards}
+    <div class="rbtns"><button class="ghostbtn" id="rmEdit">Edit race</button></div>`;
+  document.getElementById('rmEdit').onclick = () => openRaceSheet(race, renderRoadmap);
+}
+
 /* ===== Trail route: one trail per lift, cairns at milestones, your own targets, goal hit ===== */
 let routeLift = 'squat';
 const ROUTE_LIFTS = [['squat','Squat','squat'],['bench','Bench','bench'],['dl','Deadlift','deadlift']];
@@ -1721,9 +2028,9 @@ function routeSvg(o){
   s += `<path d="${path(xy)}" fill="none" stroke="var(--line)" stroke-width="3" stroke-linecap="round" stroke-dasharray="1 9"/>`;
   s += `<path d="${path(done)}" fill="none" stroke="var(--accent)" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>`;
   xy.forEach((p,i) => {
-    const last = i === n-1, built = i < k, left = p[0] < W/2;
+    const last = i === n-1, built = o.pts[i].built !== undefined ? o.pts[i].built : i < k, left = p[0] < W/2;
     s += stone(p[0], p[1]+6, built, last, last && !o.goalHit, o.pts[i].custom);
-    s += `<text x="${left ? p[0]+26 : p[0]-26}" y="${p[1]+4}" text-anchor="${left?'start':'end'}"${last?' style="font-weight:700"':''}>${o.pts[i].label}${last ? ' GOAL' : ''}</text>`;
+    s += `<text x="${left ? p[0]+26 : p[0]-26}" y="${p[1]+4}" text-anchor="${left?'start':'end'}"${last?' style="font-weight:700"':''}>${o.pts[i].label}${last ? (o.endWord !== undefined ? o.endWord : ' GOAL') : ''}</text>`;
   });
   if (o.goalHit){ const p = xy[n-1]; s += `<path d="M${p[0]} ${p[1]-18} v-30 l16 6 l-16 6" fill="var(--accent)" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round"/>`; }
   else {
@@ -1740,10 +2047,13 @@ async function renderRoute(quiet){
   if (!quiet) main.innerHTML = '<div class="rt"><div class="notes">Loading...</div></div>';
   if (offline || !db){ main.innerHTML = '<div class="notes">Not connected.</div>'; return; }
   let custom = {}, d;
+  const race = await loadRace();
+  if (routeLift === 'race' && !race) routeLift = 'squat';
   try{ const g = await db.doc('state/goals').get(); if (g.exists) goals = Object.assign({}, GOAL_DEFAULT, g.data()); }catch(e){}
   try{ const t = await db.doc('state/trail').get(); if (t.exists) custom = (t.data() && t.data().custom) || {}; }catch(e){}
   try{ d = await loadTrail(); }catch(e){ main.innerHTML = '<div class="notes">Could not load your logs.</div>'; return; }
   if (curSub() !== 'route') return;
+  if (routeLift === 'race'){ await renderRaceRoute(main, race, d, quiet); return; }
   const [id, name, gkey] = ROUTE_LIFTS.find(x => x[0] === routeLift) || ROUTE_LIFTS[0];
   const fam = d.fams.find(f => f.id === id), goal = Number(goals[gkey]) || 0, val = Math.round(fam.value);
   const mine = (custom[id] || []).map(Number).filter(c => c > 0 && c < goal);
@@ -1759,7 +2069,7 @@ async function renderRoute(quiet){
   const next = pts.find(p => p.v > val);
   const hitKey = 'cairnlabs_goalhit_' + id + '_' + goal;
   let hidden = false; try{ hidden = !!localStorage.getItem(hitKey); }catch(e){}
-  const chips = ROUTE_LIFTS.map(([i, n]) => `<button class="rtchip ${i===id?'on':''}" data-rl="${i}">${n}</button>`).join('');
+  const chips = routeChipsHtml(id, race);
   const sug = [25,50,100].map(n => Math.ceil((val + n) / 5) * 5);
   const hitBox = (hit && !hidden) ? `<div class="rthit"><div class="rtk">GOAL HIT</div><div class="rtbig">${goal} lb, built.</div>
       <div class="notes">${name} estimated max ${val} lb. Pick the next one, or keep this trail as it is.</div>
@@ -2313,14 +2623,14 @@ function renderMaxes(){
 
 /* =================== CAIRN ADDITIONS =================== */
 const SUBS = {
-  progress: [['week','Week'],['goals','Goals'],['recap','Recap'],['route','Trail'],['history','Lifts'],['records','Records'],['balance','Balance'],['trail','Markers'],['volume','Volume'],['weight','Weight'],['strength','Strength'],['functional','Functional'],['sticking','Bench'],['skips','Skips'],['bench','Tests']],
+  progress: [['week','Week'],['goals','Goals'],['recap','Recap'],['route','Trail'],['cardio','Cardio'],['history','Lifts'],['records','Records'],['balance','Balance'],['trail','Markers'],['volume','Volume'],['weight','Weight'],['strength','Strength'],['functional','Functional'],['sticking','Bench'],['skips','Skips'],['bench','Tests']],
   body: [['readiness','Readiness'],['flares','Flare-ups'],['flareplan','Flare plan'],['mobility','Mobility']],
   plan: [['maxes','Maxes'],['roadmap','Roadmap'],['plans','Plans'],['exercises','Exercises'],['settings','Settings']]
 };
 const PROGRESS_GROUPS = [
   ['Overview', [['week','Week'],['goals','Goals'],['recap','Recap'],['route','Trail'],['trail','Markers']]],
   ['Lifting', [['history','Lifts'],['records','Records'],['strength','Strength'],['volume','Volume'],['sticking','Bench']]],
-  ['Body', [['weight','Weight'],['balance','Balance'],['functional','Functional']]],
+  ['Body', [['weight','Weight'],['cardio','Cardio'],['balance','Balance'],['functional','Functional']]],
   ['Checks', [['bench','Tests'],['skips','Skips']]],
 ];
 const VIEW_TITLES = { progress:'Progress', body:'Body', plan:'Plan' };
@@ -2402,6 +2712,7 @@ function renderSubView(){
   else if (s==='goals') renderGoals();
   else if (s==='recap') renderRecap();
   else if (s==='route') renderRoute();
+  else if (s==='cardio') renderCardioPage();
   else if (s==='trail') renderTrail();
   else if (s==='volume') renderVolume();
   else if (s==='weight') renderWeight();
@@ -2415,7 +2726,7 @@ function renderSubView(){
   else if (s==='flareplan') mainEl().innerHTML = planFlareHtml();
   else if (s==='mobility') renderMobility();
   else if (s==='maxes') renderMaxes();
-  else if (s==='roadmap') mainEl().innerHTML = planRoadmapHtml();
+  else if (s==='roadmap') renderRoadmap();
   else if (s==='plans') renderPlans();
   else if (s==='exercises') renderExercises();
   else if (s==='settings') renderSettings();
@@ -2569,6 +2880,11 @@ const SWAPS = [
   { area:'Knees', re:/^Squat \(PRIMARY\)/, to:'Box squat (high box)', muscles:['Quads','Glutes','Core'], note:'Swapped for a knee flare. Limits end-range knee bend.' },
   { area:'Shoulders', re:/^Dumbbell OHP/, to:'Landmine press', muscles:['Shoulders','Triceps'], note:'Swapped for a shoulder flare. Stay pain-free.' },
   { area:'Shoulders', re:/^Bench Press \(PRIMARY\)/, to:'Board press', muscles:['Chest','Triceps','Shoulders'], note:'Swapped for a shoulder flare. Shorter range.' },
+  { area:'Hips', re:/split squat|Bulgarian|Cossack|lunge/i, to:'Leg press (pain-free range)', muscles:['Quads','Glutes'], note:'Swapped for a hip flare. Stay in a comfortable range.' },
+  { area:'Knees', re:/split squat|Bulgarian|lunge|step-up/i, to:'Leg press (short range)', muscles:['Quads','Glutes'], note:'Swapped for a knee flare. Short range, no pain.' },
+  { area:'Knees', re:/bound|jump squat/i, to:'Sled push', muscles:['Quads','Glutes','Cardio'], note:'Swapped for a knee flare. No impact.' },
+  { area:'Shoulders', re:/incline.*(press|bench)/i, to:'Landmine press', muscles:['Shoulders','Chest','Triceps'], note:'Swapped for a shoulder flare. Stay pain-free.' },
+  { area:'Low back', re:/good morning|barbell row|bent.?over row/i, to:'Chest-supported row', muscles:['Back','Biceps'], note:'Swapped for a back flare. No loading through the spine.' },
   { area:'Shoulders', re:/^Weighted pull-up/, to:'Lat pulldown', muscles:['Back','Biceps'], note:'Swapped for a shoulder flare. Neutral grip if it helps.' }
 ];
 function swapOptions(){
