@@ -711,6 +711,9 @@ select.crin{ appearance:none; }
 .blankday{ padding:22px 16px; text-align:left; }
 .bdq{ font-family:var(--serif); font-size:28px; line-height:1.15; color:var(--fg); margin-bottom:6px; }
 .bdbig{ width:100%; margin-top:14px; flex:none; } .bdalt{ width:100%; margin-top:8px; }
+.hintcard{ display:flex; gap:12px; align-items:flex-start; border:1px solid var(--accent); border-radius:14px; padding:12px 14px; margin:0 0 12px; background:var(--surface); }
+.hintcard b{ color:var(--accent); }
+.hintcard .hintx{ flex:none; margin-left:auto; }
 .exswap{ background:transparent; border:1px solid var(--line); color:var(--muted); font-size:12px; padding:3px 8px; border-radius:8px; }
 .exdel{ background:transparent; border:0; color:var(--muted); font-size:16px; padding:2px 6px; line-height:1; }
 .quick .setrow{ grid-template-columns:20px 1fr 64px 54px 36px; } .quick .setrow input[data-field="rpe"]{ display:none; }
@@ -1086,9 +1089,6 @@ async function init(){
   }catch(e){ db = null; }
   maybeWelcome();
   if (window.CAIRN_FRESH){
-    const bar = document.createElement('div'); bar.className = 'freezebar'; bar.innerHTML = '<span>Test version. Saved on this phone.</span><button id="freshReset">Start over</button>';
-    document.body.insertBefore(bar, document.body.firstChild);
-    document.getElementById('freshReset').onclick = () => { if (!confirm('Erase this preview and start over?')) return; ['cairnlabs_fresh_db','cairnlabs_welcomed','cairnlabs_settings','cairnlabs_trail'].forEach(k => { try{ localStorage.removeItem(k); }catch(e){} }); location.reload(); };
   }
   if (!db){
     offline = true;
@@ -1360,7 +1360,7 @@ function renderDay(){
 
   main.classList.toggle('quick', quickMode());
   if (!visible.length && quickMode()){
-    main.innerHTML = `<div class="card blankday"><div class="bdq">What are you training today?</div>
+    main.innerHTML = `${hintHtml('today')}<div class="card blankday"><div class="bdq">What are you training today?</div>
       <div class="notes">Add the exercises you do as you go. Nothing is planned for you.</div>
       <button class="savebtn bdbig" id="bdAdd">+ Add exercise</button>
       <button class="ghostbtn bdalt" id="openTpl">Use a saved workout</button></div><div id="cardioCard"></div>`;
@@ -1377,6 +1377,7 @@ function renderDay(){
   }
 
   let html = '';
+  html += hintHtml('today');
   if (offline) html += `<div class="offlineflag">Not connected — changes here won’t be saved.</div>`;
 
   if (!isBlankDay(w)){ html += readinessHtml(); html += deloadBannerHtml(); html += patternHtml(); html += skipBannerHtml(); }
@@ -3052,6 +3053,19 @@ function subList(v){
   if (v === 'progress' && settings.focus === 'run') l = l.filter(x => x[0] !== 'history' && x[0] !== 'records');
   return l;
 }
+/* One-time tips: each shows once on its tab, then stays out of the way. */
+const HINTS = {
+  today:['Start here','Tap Add exercise and pick what you are doing. Tap the check on each set as you finish it. Everything else fills in as you log.'],
+  progress:['Your trail','Each session adds a stone to your cairn. Log a few workouts and the trail, week view and records fill in.'],
+  body:['Optional','A quick 3-tap check-in, mobility flows and flare-up help. Skip it if you just want to lift.'],
+  plan:['Plans are optional','You can skip this tab and just log each day. Pick a program only if you want one to follow.']
+};
+function hintSeen(id){ try{ return localStorage.getItem('cairnlabs_hint_' + id) === '1'; }catch(e){ return false; } }
+function hintHtml(id){
+  if (!window.CAIRN_FRESH || hintSeen(id) || !HINTS[id]) return '';
+  return `<div class="hintcard" data-hint="${id}"><div><b>${HINTS[id][0]}</b><div class="notes">${HINTS[id][1]}</div></div><button class="ghostbtn hintx" data-hintx="${id}">Got it</button></div>`;
+}
+document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('[data-hintx]'); if (!b) return; try{ localStorage.setItem('cairnlabs_hint_' + b.dataset.hintx, '1'); }catch(err){} const c = b.closest('.hintcard'); if (c) c.remove(); });
 function curSub(){ return view==='today' ? 'today' : subs[view]; }
 function mainEl(){ return document.getElementById('subbody') || document.getElementById('main'); }
 function isWarm(ex){ return /warm-up/i.test(ex||''); }
@@ -3109,7 +3123,7 @@ function renderSubView(){
   const list = subList(view);
   if (!list.some(x => x[0] === subs[view])) subs[view] = list[0][0];
   if (view === 'progress' && settings.advanced){
-    main.innerHTML = `<div class="plannav grp">${PROGRESS_GROUPS.map(([name, items], gi) => {
+    main.innerHTML = `${hintHtml(view)}<div class="plannav grp">${PROGRESS_GROUPS.map(([name, items], gi) => {
       const cur = items.find(([k]) => k === subs.progress);
       return `<div class="ddwrap"><button class="mpick ddbtn ${cur ? 'on' : ''}" data-grp="${gi}" aria-haspopup="true" aria-expanded="false">${cur ? cur[1] : name}<span class="car">&#9662;</span></button>
         <div class="ddmenu" hidden>${items.map(([k,l]) => `<button type="button" class="${subs.progress===k?'on':''}" data-sub="${k}">${l}</button>`).join('')}</div></div>`;
@@ -3119,7 +3133,7 @@ function renderSubView(){
     main.querySelectorAll('.ddmenu button').forEach(b => b.onclick = () => { subs.progress = b.dataset.sub; renderSubView(); });
     if (!window._ddClose){ window._ddClose = true; document.addEventListener('click', () => document.querySelectorAll('.ddmenu').forEach(m => m.hidden = true)); }
   } else {
-    main.innerHTML = `<div class="plannav">${list.map(([k,l]) => `<button class="mpick ${subs[view]===k?'on':''}" data-sub="${k}">${l}</button>`).join('')}</div><div id="subbody" class="subbody"></div>`;
+    main.innerHTML = `${hintHtml(view)}<div class="plannav">${list.map(([k,l]) => `<button class="mpick ${subs[view]===k?'on':''}" data-sub="${k}">${l}</button>`).join('')}</div><div id="subbody" class="subbody"></div>`;
     main.querySelectorAll('.plannav .mpick').forEach(b => b.onclick = () => { subs[view] = b.dataset.sub; renderSubView(); });
     { const on = main.querySelector('.plannav .mpick.on'); if (on) on.scrollIntoView({ inline:'center', block:'nearest' }); }
   }
@@ -5714,7 +5728,7 @@ function renderSettings(){
     </details>
     <div class="card">
       <div class="exname">How much to show</div>
-      <div class="notes">Simple keeps the main screens. Everything adds extra stats, maxes, roadmap and the long Progress menu.</div>
+      <div class="notes">Simple is enough to log workouts, see your trail, week and records, and track cardio. Everything adds maxes, roadmap, balance, volume, sticking points and the rest of the Progress menu. Switching never deletes anything.</div>
       <div class="rareas" id="viewPick"><button class="mpick ${settings.advanced?'':'on'}" data-adv="0">Simple</button><button class="mpick ${settings.advanced?'on':''}" data-adv="1">Everything</button></div>
       <div class="notes" style="margin-top:10px;">Train screen</div>
       <div class="rareas" id="modePick"><button class="mpick ${quickMode()?'on':''}" data-mode="quick">Quick log</button><button class="mpick ${quickMode()?'':'on'}" data-mode="program">My program</button></div>
@@ -5765,7 +5779,7 @@ function renderAccount(){
   main.innerHTML = `
     <div class="card"><div class="exname">You</div>
       <div class="notes" id="acctLine"></div>
-      ${window.CAIRN_FRESH ? '<div class="notes">This is a fresh preview. Everything you log stays on this phone only.</div><button class="ghostbtn danger" id="acctReset" style="align-self:flex-start;">Erase and start over</button>' : '<button class="ghostbtn" id="acctOut" style="align-self:flex-start;">Sign out</button>'}
+      ${window.CAIRN_FRESH ? '<div class="notes">This is a test version. Everything you log stays on this phone only, and a different phone starts blank.</div><button class="ghostbtn danger" id="acctReset" style="align-self:flex-start;">Erase and start over</button>' : '<button class="ghostbtn" id="acctOut" style="align-self:flex-start;">Sign out</button>'}
     </div>
     <div class="card"><div class="exname">Your data</div>
       <div class="notes">Keep a copy of your logs, or restore one.</div>
