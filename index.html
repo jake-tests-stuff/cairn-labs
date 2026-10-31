@@ -967,7 +967,7 @@ function esc(s){
 /* Rest for exercises you add: longer for heavy compound lifts, shorter for small isolation work */
 function isBarbellEx(name){
   const n = String(name || '').toLowerCase();
-  if (/dumbbell|\bdb\b|cable|kettlebell|band|machine|bodyweight|push-up|pull-up|dip\b|goblet|landmine|sled|jump|lunge|split|step-up|curl-up/.test(n) && !/smith/.test(n)) return false;
+  if (/dumbbell|\bdb\b|cable|kettlebell|band|machine|bodyweight|push-up|pull-up|dip\b|goblet|landmine|sled|jump|lunge|split|step-up|curl-up|pendulum|pistol|sissy|hack|belt squat|wall|heel-elevated|cossack|plate press|\bring\b/.test(n) && !/smith/.test(n)) return false;
   return /barbell|squat|bench press|deadlift|overhead press|military press|\brow\b|hip thrust|good morning|clean|snatch|rack pull|\bohp\b|\bbar\b|smith/.test(n);
 }
 function autoRest(name, muscles){
@@ -1055,15 +1055,15 @@ function showWelcome(){
     let body;
     if (step === 0) body = `<div class="wlogo">${CAIRN_LOGO || ''}</div><h1>Welcome to Cairn</h1>
       <p class="wlead">A simple place to log your training.</p>
-      <p>Log a lift or a run. Each session adds a stone to your cairn, and the stones add up over time.</p>
+      <p>Log a workout, a run, a ride, a class, whatever you do. Each session adds a stone to your cairn, and the stones add up over time.</p>
       <p>That is all you need to do. Everything else is optional and can wait.</p>
       <button class="savebtn wbtn" id="wNext">Get started</button><button class="ghostbtn wskip" id="wSkip">Skip for now</button>`;
-    else if (step === 1) body = `<h1>What do you train?</h1><p>Pick the closest one. You can change it later.</p>
-      <div class="wopts">${[['lift','Lifting','Strength training with weights'],['run','Running and cardio','Runs, rides, swims and hikes'],['both','Both','A bit of everything']].map(([k, n, d]) => `<button type="button" class="wopt ${goal === k ? 'on' : ''}" data-g="${k}"><b>${n}</b><span>${d}</span></button>`).join('')}</div>
+    else if (step === 1) body = `<h1>How do you like to move?</h1><p>Pick the closest one. You can change it later, and you can log anything.</p>
+      <div class="wopts">${[['lift','Lifting','Strength training with weights'],['run','Running and cardio','Runs, rides, swims and hikes'],['both','A mix of both','Weights plus runs, rides or swims'],['other','Something else','Classes, sports, walks, home workouts, anything']].map(([k, n, d]) => `<button type="button" class="wopt ${goal === k ? 'on' : ''}" data-g="${k}"><b>${n}</b><span>${d}</span></button>`).join('')}</div>
       <div class="lab">UNITS</div><div class="rtchips"><button class="rtchip ${units !== 'metric' ? 'on' : ''}" data-u="imperial">lb and miles</button><button class="rtchip ${units === 'metric' ? 'on' : ''}" data-u="metric">kg and km</button></div>
       <button class="savebtn wbtn" id="wNext">Next</button><button class="ghostbtn wskip" id="wBack">Back</button>`;
     else body = `<h1>You are set</h1><p>Four tabs along the bottom:</p>
-      <div class="wtabs"><div><b>Train</b><span>Today's session. Log sets${goal === 'run' ? '' : ' and weights'}${goal === 'lift' ? '' : ', add a run or ride'}.</span></div>
+      <div class="wtabs"><div><b>Train</b><span>Today's session. Add exercises and log your sets${goal === 'lift' ? '' : ', or add a run, ride, class or anything else'}.</span></div>
       <div><b>Progress</b><span>Your cairns and how far you have come.</span></div>
       <div><b>Body</b><span>How you feel and what to do when something hurts.</span></div>
       <div><b>Plan</b><span>Optional. Programs and goals, whenever you want them.</span></div></div>
@@ -2071,8 +2071,8 @@ async function renderRecap(){
 
 
 /* ===== Cardio log (miles stored; shown in your units) ===== */
-const CARDIO_KINDS = [['run','Run'],['bike','Bike'],['swim','Swim'],['row','Row'],['hike','Hike'],['other','Other']];
-const KIND_NOUN = { run:'run', bike:'ride', swim:'swim', row:'row', hike:'hike', other:'session', any:'session' };
+const CARDIO_KINDS = [['run','Run'],['walk','Walk'],['bike','Bike'],['swim','Swim'],['row','Row'],['hike','Hike'],['elliptical','Elliptical'],['other','Something else']];
+const KIND_NOUN = { run:'run', walk:'walk', elliptical:'session', bike:'ride', swim:'swim', row:'row', hike:'hike', other:'session', any:'session' };
 let cardioCache = null;
 async function loadCardio(force){
   if (cardioCache && !force) return cardioCache;
@@ -2099,7 +2099,7 @@ function parseDur(str){
 }
 function paceText(c){ if (!(c.mi > 0 && c.min > 0)) return ''; const per = c.min / (isMetric() ? c.mi * 1.609344 : c.mi); return fmtDur(per) + (isMetric() ? ' /km' : ' /mi'); }
 function cardioLine(c){
-  const k = (CARDIO_KINDS.find(x => x[0] === c.kind) || ['', 'Cardio'])[1];
+  const k = c.name ? c.name : (CARDIO_KINDS.find(x => x[0] === c.kind) || ['', 'Cardio'])[1];
   const bits = [c.mi > 0 ? fmtDist(c.mi) : '', c.min > 0 ? fmtDur(c.min) : '', paceText(c)].filter(Boolean);
   return `<b>${k}</b> ${bits.join(' · ')}`;
 }
@@ -2112,7 +2112,7 @@ async function drawCardioCard(){
   const mine = all.filter(x => x.date === date);
   const wk = mondayOf(date), wkMi = all.filter(x => mondayOf(x.date) === wk).reduce((t, x) => t + (Number(x.mi) || 0), 0);
   el2.innerHTML = `<div class="card cardiocard"><div class="exhead"><div class="exname">Cardio</div><div class="chips">${wkMi ? `<span class="chip">${fmtDist(wkMi)} this week</span>` : ''}</div></div>
-    ${mine.length ? mine.map(c => `<div class="crow"><span>${cardioLine(c)}</span><button class="rtx" data-cdel="${esc(c.id)}" aria-label="Delete session">✕</button></div>`).join('') : '<div class="notes">Optional. Log a run, ride, swim or hike and race trails pick it up.</div>'}
+    ${mine.length ? mine.map(c => `<div class="crow"><span>${cardioLine(c)}</span><button class="rtx" data-cdel="${esc(c.id)}" aria-label="Delete session">✕</button></div>`).join('') : '<div class="notes">Optional. Log a run, ride, swim, hike or anything else you do and your trails pick it up.</div>'}
     <div class="rbtns"><button class="ghostbtn" id="cardioAdd">+ Add cardio</button></div></div>`;
   document.getElementById('cardioAdd').onclick = () => openCardioSheet(date);
   el2.querySelectorAll('[data-cdel]').forEach(b => b.onclick = async () => { try{ await db.collection('cardio').doc(b.dataset.cdel).delete(); }catch(e){ console.warn(e); } if (trailCache) trailCache.stale = true; await loadCardio(true); drawCardioCard(); if (view === 'progress' && curSub() === 'cardio') renderCardioPage(); });
@@ -2127,10 +2127,11 @@ function openCardioSheet(date){
       <label class="jlabel">Time (mm:ss or h:mm:ss)<input class="rtin crin" id="crTime" type="text" inputmode="numeric" placeholder="52:10"></label>
       <label class="jlabel">Avg heart rate (optional)<input class="rtin crin" id="crHr" type="number" inputmode="numeric" placeholder="150"></label>
       <label class="jlabel">Note (optional)<input class="rtin crin" id="crNote" type="text" placeholder="easy, flat route"></label></div>
+    <label class="jlabel" id="crNameWrap" hidden>What did you do?<input class="rtin crin" id="crName" type="text" maxlength="40" placeholder="Pickleball, climbing, a class..."></label>
     <div class="notes" id="crPace" style="margin-top:6px;"></div>
     <div class="rbtns" style="margin-top:10px;"><button class="savebtn rtgo" id="crSave">Save session</button></div>`);
   document.getElementById('crClose').onclick = closeSheet;
-  document.querySelectorAll('[data-ck]').forEach(b => b.onclick = () => { kind = b.dataset.ck; document.querySelectorAll('[data-ck]').forEach(x => x.classList.toggle('on', x === b)); });
+  document.querySelectorAll('[data-ck]').forEach(b => b.onclick = () => { kind = b.dataset.ck; document.querySelectorAll('[data-ck]').forEach(x => x.classList.toggle('on', x === b)); document.getElementById('crNameWrap').hidden = kind !== 'other'; });
   const upd = () => { const mi = distIn(document.getElementById('crDist').value), min = parseDur(document.getElementById('crTime').value); document.getElementById('crPace').textContent = (mi > 0 && min > 0) ? 'Pace ' + paceText({ mi, min }) : ''; };
   document.getElementById('crDist').oninput = upd; document.getElementById('crTime').oninput = upd;
   document.getElementById('crSave').onclick = async () => {
@@ -2138,7 +2139,8 @@ function openCardioSheet(date){
     if (!(mi > 0) && !(min > 0)) return;
     const hr = Number(document.getElementById('crHr').value) || null, note = document.getElementById('crNote').value.trim();
     const doc = { date, kind, mi: Math.round(mi * 1000) / 1000, min: Math.round(min * 100) / 100, createdAt: new Date().toISOString() };
-    if (hr) doc.hr = hr; if (note) doc.note = note;
+    const nm = kind === 'other' ? document.getElementById('crName').value.trim() : '';
+    if (hr) doc.hr = hr; if (note) doc.note = note; if (nm) doc.name = nm;
     try{ await db.collection('cardio').doc(date + '__' + Date.now()).set(doc); }catch(e){ console.warn(e); }
     if (trailCache) trailCache.stale = true; await loadCardio(true); closeSheet(); drawCardioCard(); if (view === 'progress' && curSub() === 'cardio') renderCardioPage();
     if (view === 'progress' && curSub() === 'route') renderRoute(true);
@@ -3057,7 +3059,7 @@ function subList(v){
 const HINTS = {
   today:['Start here','Tap Add exercise and pick what you are doing. Tap the check on each set as you finish it. Everything else fills in as you log.'],
   progress:['Your trail','Each session adds a stone to your cairn. Log a few workouts and the trail, week view and records fill in.'],
-  body:['Optional','A quick 3-tap check-in, mobility flows and flare-up help. Skip it if you just want to lift, run or ride.'],
+  body:['Optional','A quick 3-tap check-in, mobility flows and flare-up help. Skip it if you just want to log your workouts.'],
   plan:['Plans are optional','You can skip this tab and just log each day. Pick a program only if you want one to follow.']
 };
 function hintSeen(id){ try{ return localStorage.getItem('cairnlabs_hint_' + id) === '1'; }catch(e){ return false; } }
@@ -5344,7 +5346,221 @@ Cat-cow|Mobility|Back,Core
 Deep squat hold|Mobility|Quads,Glutes
 Ankle rocks|Mobility|Calves
 Shoulder dislocates|Mobility|Shoulders
-Foam roll|Mobility|`;
+Foam roll|Mobility|
+Incline machine chest press|Chest,Shoulders|Triceps
+Decline machine chest press|Chest|Triceps
+Hammer Strength chest press|Chest|Triceps,Shoulders
+Smith machine bench press|Chest|Triceps,Shoulders
+Smith machine incline press|Chest,Shoulders|Triceps
+Decline dumbbell press|Chest|Triceps
+Incline dumbbell fly|Chest|Shoulders
+Low-to-high cable fly|Chest|Shoulders
+High-to-low cable fly|Chest
+Cable crossover|Chest
+Single-arm cable press|Chest|Triceps
+Dumbbell squeeze press|Chest|Triceps
+Landmine chest press|Chest,Shoulders|Triceps
+Kettlebell floor press|Chest,Triceps
+Plate press|Chest|Triceps
+Decline push-up|Chest|Shoulders,Triceps
+Incline push-up|Chest|Triceps
+Ring push-up|Chest|Core,Shoulders
+Diamond push-up|Triceps,Chest
+Chest dip|Chest|Triceps
+Parallel bar dip|Triceps,Chest
+Assisted dip machine|Triceps,Chest
+Machine shoulder press|Shoulders|Triceps
+Smith machine shoulder press|Shoulders|Triceps
+Machine lateral raise|Shoulders
+Leaning cable lateral raise|Shoulders
+Reverse pec deck|Shoulders,Back
+Cable rear delt fly|Shoulders|Back
+Plate front raise|Shoulders
+Single-arm landmine press|Shoulders|Core
+Kettlebell overhead press|Shoulders|Triceps,Core
+Z press|Shoulders|Core,Triceps
+Pike push-up|Shoulders|Triceps
+Handstand push-up|Shoulders,Triceps
+Cuban press|Shoulders
+Scaption|Shoulders
+Y raise|Shoulders|Back
+Bottoms-up kettlebell press|Shoulders|Core,Grip
+Cable upright row|Shoulders
+Rotator cuff external rotation|Shoulders
+Barbell shrug|Back
+Dumbbell shrug|Back|Grip
+Trap bar shrug|Back|Grip
+Smith machine row|Back
+Hammer Strength row|Back
+Iso-lateral row|Back
+High row machine|Back
+Single-arm cable row|Back
+Wide-grip lat pulldown|Back|Biceps
+Neutral-grip pulldown|Back|Biceps
+Single-arm lat pulldown|Back
+Assisted pull-up machine|Back,Biceps
+Neutral-grip pull-up|Back,Biceps
+Wide-grip pull-up|Back|Biceps
+Commando pull-up|Back,Biceps
+Dumbbell pullover|Back|Chest
+Cable pullover|Back
+Machine pullover|Back
+Seal row|Back
+Kroc row|Back|Grip
+Renegade row|Back|Core
+Kettlebell row|Back
+Reverse hyperextension|Glutes,Back|Hamstrings
+Superman|Back|Glutes
+Snatch-grip deadlift|Back,Hamstrings,Glutes
+Block pull|Back,Glutes
+Dumbbell Romanian deadlift|Hamstrings,Glutes
+Dumbbell deadlift|Hamstrings,Glutes|Back
+Kettlebell deadlift|Hamstrings,Glutes
+EZ-bar curl|Biceps
+Spider curl|Biceps
+Zottman curl|Biceps|Grip
+Cross-body hammer curl|Biceps
+Reverse curl|Biceps|Grip
+Bayesian curl|Biceps
+Machine bicep curl|Biceps
+Machine preacher curl|Biceps
+Drag curl|Biceps
+Cable hammer curl|Biceps
+Overhead cable curl|Biceps
+Cable overhead triceps extension|Triceps
+Single-arm pushdown|Triceps
+Reverse-grip pushdown|Triceps
+Dumbbell skull crusher|Triceps
+JM press|Triceps|Chest
+Triceps kickback|Triceps
+Machine triceps extension|Triceps
+Tate press|Triceps
+Smith machine squat|Quads,Glutes
+Pendulum squat|Quads
+V-squat machine|Quads|Glutes
+Machine squat|Quads|Glutes
+Single-leg leg press|Quads,Glutes
+Horizontal leg press|Quads|Glutes
+Dumbbell lunge|Quads,Glutes
+Lateral lunge|Quads,Glutes
+Curtsy lunge|Glutes,Quads
+Split squat|Quads,Glutes
+Front-foot elevated split squat|Quads|Glutes
+Pistol squat|Quads,Glutes|Core
+Zercher squat|Quads,Glutes|Core
+Safety bar squat|Quads,Glutes
+Overhead squat|Quads,Core|Shoulders
+Heel-elevated squat|Quads
+Cossack squat|Quads,Glutes
+Reverse Nordic|Quads
+Standing leg curl|Hamstrings
+Single-leg curl|Hamstrings
+Slider leg curl|Hamstrings|Glutes
+Hip adduction machine|Glutes
+Cable hip abduction|Glutes
+Banded lateral walk|Glutes
+Clamshell|Glutes
+Frog pump|Glutes
+Single-leg hip thrust|Glutes|Hamstrings
+Machine hip thrust|Glutes
+Smith machine hip thrust|Glutes
+45-degree hip extension|Glutes,Hamstrings|Back
+Glute kickback machine|Glutes
+Hip airplane|Glutes|Mobility
+Smith machine calf raise|Calves
+Single-leg calf raise|Calves
+Leg press calf raise|Calves
+Jump squat|Quads,Glutes
+Tuck jump|Quads|Glutes
+Skater jump|Glutes,Quads
+Lateral bound|Glutes,Quads
+Depth jump|Quads|Glutes
+Kettlebell clean|Glutes,Back|Shoulders
+Kettlebell snatch|Glutes,Shoulders|Back
+Kettlebell clean and press|Shoulders,Glutes|Core
+Kettlebell high pull|Shoulders,Back
+Kettlebell front squat|Quads|Core
+Kettlebell goblet lunge|Quads,Glutes
+Kettlebell single-leg deadlift|Hamstrings,Glutes
+Kettlebell halo|Shoulders|Core
+Kettlebell windmill|Core,Shoulders
+Turkish get-up|Core,Shoulders|Glutes
+Kettlebell rack carry|Core,Grip
+Bottoms-up carry|Core,Grip|Shoulders
+Dumbbell snatch|Shoulders,Glutes|Back
+Dumbbell goblet squat|Quads|Glutes
+Power clean|Back,Glutes,Hamstrings
+Hang clean|Back,Glutes|Hamstrings
+Clean pull|Back,Hamstrings
+Clean and jerk|Shoulders,Quads,Glutes|Back
+Snatch|Shoulders,Back,Glutes
+Hang snatch|Shoulders,Back,Glutes
+Thruster|Quads,Shoulders|Core
+Dumbbell thruster|Quads,Shoulders
+Wall ball|Quads,Shoulders
+Barbell complex|Back,Glutes|Shoulders
+Man maker|Cardio,Shoulders|Core
+Devil press|Cardio,Shoulders|Glutes
+Tire flip|Back,Glutes,Quads
+Sledgehammer slam|Core,Shoulders
+Yoke carry|Core,Grip|Quads
+Overhead carry|Shoulders,Core
+Waiter walk|Shoulders,Core
+Bear crawl|Core,Shoulders
+Atlas stone lift|Back,Glutes|Grip
+Log press|Shoulders,Triceps
+Axle deadlift|Back,Hamstrings|Grip
+Crunch|Core
+Sit-up|Core
+Machine crunch|Core
+Bicycle crunch|Core
+V-up|Core
+Toes to bar|Core,Grip
+L-sit|Core
+Hollow hold|Core
+Flutter kick|Core
+Leg raise|Core
+Reverse crunch|Core
+Mountain climber|Core,Cardio
+Landmine twist|Core
+Side bend|Core
+Dragon flag|Core
+Stir the pot|Core
+Weighted plank|Core
+Hanging windshield wiper|Core|Grip
+Torso rotation machine|Core
+Back extension machine|Back|Glutes
+Treadmill run|Cardio
+Treadmill walk|Cardio
+Walk|Cardio
+Hike|Cardio
+Stationary bike|Cardio
+Spin class|Cardio
+Assault bike|Cardio
+Ski erg|Cardio,Back
+Elliptical|Cardio
+Hill sprints|Cardio,Glutes|Quads
+Jumping jacks|Cardio
+High knees|Cardio
+Shadow boxing|Cardio|Shoulders
+Heavy bag|Cardio,Shoulders|Core
+Rock climbing|Back,Grip|Cardio
+Bouldering|Back,Grip|Cardio
+Basketball|Cardio
+Soccer|Cardio
+Tennis|Cardio
+Pickleball|Cardio
+Martial arts|Cardio
+Group fitness class|Cardio
+Yoga|Mobility
+Pilates|Core,Mobility
+Static stretching|Mobility
+Hip flexor stretch|Mobility
+Hamstring stretch|Mobility
+Pigeon pose|Mobility
+Child's pose|Mobility
+Downward dog|Mobility
+Banded shoulder stretch|Mobility`;
 const EX_LIB = EX_LIB_RAW.split('\n').map(l => { const [n, p, s] = l.split('|'); return { n, p: p ? p.split(',') : [], s: s ? s.split(',').filter(Boolean) : [] }; });
 const EX_BY_NAME = {}; EX_LIB.forEach(e => { EX_BY_NAME[e.n.toLowerCase()] = e; });
 let userEx = {}; // exercises you typed yourself: { slug: { name, muscles } }
