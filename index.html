@@ -1360,12 +1360,18 @@ function renderDay(){
 
   main.classList.toggle('quick', quickMode());
   if (!visible.length && quickMode()){
-    main.innerHTML = `${hintHtml('today')}<div class="card blankday"><div class="bdq">What are you training today?</div>
-      <div class="notes">Add the exercises you do as you go. Nothing is planned for you.</div>
-      <button class="savebtn bdbig" id="bdAdd">+ Add exercise</button>
+    const f = settings.focus, date = WORKOUTS[curIdx].date;
+    const cfg = f === 'run' ? { q:'What are you doing today?', note:'Log a run, ride or swim. Add strength work too if you do any.', big:['bdCardio','+ Log a run or ride'], alt:['bdAdd','+ Add exercise'] }
+      : f === 'other' ? { q:'What are you doing today?', note:'Add exercises, or log a run, class or any activity. Nothing is planned for you.', big:['bdAdd','+ Add exercise'], alt:['bdCardio','+ Log cardio or an activity'] }
+      : { q:'What are you training today?', note:'Add the exercises you do as you go. Nothing is planned for you.', big:['bdAdd','+ Add exercise'], alt:null };
+    main.innerHTML = `${hintHtml('today')}<div class="card blankday"><div class="bdq">${cfg.q}</div>
+      <div class="notes">${cfg.note}</div>
+      <button class="savebtn bdbig" id="${cfg.big[0]}">${cfg.big[1]}</button>
+      ${cfg.alt ? `<button class="ghostbtn bdalt" id="${cfg.alt[0]}">${cfg.alt[1]}</button>` : ''}
       <button class="ghostbtn bdalt" id="openTpl">Use a saved workout</button></div><div id="cardioCard"></div>`;
     drawCardioCard();
-    document.getElementById('bdAdd').onclick = () => openExercisePicker();
+    const ba = document.getElementById('bdAdd'); if (ba) ba.onclick = () => openExercisePicker();
+    const bc = document.getElementById('bdCardio'); if (bc) bc.onclick = () => openCardioSheet(date);
     document.getElementById('openTpl').onclick = openTemplatePicker;
     return;
   }
@@ -1382,6 +1388,7 @@ function renderDay(){
 
   if (!isBlankDay(w)){ html += readinessHtml(); html += deloadBannerHtml(); html += patternHtml(); html += skipBannerHtml(); }
   html += wkBarHtml();
+  if (settings.focus === 'run') html += '<div id="cardioCard"></div>';
 
   visible.forEach(item => {
     const isPrimary = /PRIMARY/i.test(item.ex);
@@ -1478,7 +1485,7 @@ function renderDay(){
   if (editMode) html += addFormHtml();
   else if (quickMode()) html += '<div class="card addcard"><button class="addbtn" id="qAdd">+ Add exercise</button></div>';
 
-  html += '<div id="cardioCard"></div>';
+  if (settings.focus !== 'run') html += '<div id="cardioCard"></div>';
   html += finishBarHtml();
   html += skipBtnHtml();
   main.innerHTML = html;
@@ -3065,7 +3072,8 @@ const HINTS = {
 function hintSeen(id){ try{ return localStorage.getItem('cairnlabs_hint_' + id) === '1'; }catch(e){ return false; } }
 function hintHtml(id){
   if (!window.CAIRN_FRESH || hintSeen(id) || !HINTS[id]) return '';
-  return `<div class="hintcard" data-hint="${id}"><div><b>${HINTS[id][0]}</b><div class="notes">${HINTS[id][1]}</div></div><button class="ghostbtn hintx" data-hintx="${id}">Got it</button></div>`;
+  const h = id === 'today' && settings.focus === 'run' ? ['Start here','Tap Log a run or ride and enter distance and time. Add exercises too if you do strength work.'] : id === 'today' && settings.focus === 'other' ? ['Start here','Add an exercise, or log a run, class or any activity. Everything else fills in as you log.'] : HINTS[id];
+  return `<div class="hintcard" data-hint="${id}"><div><b>${h[0]}</b><div class="notes">${h[1]}</div></div><button class="ghostbtn hintx" data-hintx="${id}">Got it</button></div>`;
 }
 document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('[data-hintx]'); if (!b) return; try{ localStorage.setItem('cairnlabs_hint_' + b.dataset.hintx, '1'); }catch(err){} const c = b.closest('.hintcard'); if (c) c.remove(); });
 function curSub(){ return view==='today' ? 'today' : subs[view]; }
