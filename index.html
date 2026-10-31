@@ -739,8 +739,16 @@ input,select,textarea,.tabular,.stat .sv,.rt .sum b,.setrow input{ font-variant-
 <script>
 /* Fresh preview: ?fresh=1 swaps the cloud database for an empty one kept only on this device. ?fresh=0 turns it off. */
 (function(){
-  try{ const q = new URLSearchParams(location.search); if (q.get('fresh') === '1') localStorage.setItem('cairnlabs_fresh','1'); if (q.get('fresh') === '0'){ localStorage.removeItem('cairnlabs_fresh'); localStorage.removeItem('cairnlabs_fresh_db'); } }catch(e){}
-  let on = false; try{ on = localStorage.getItem('cairnlabs_fresh') === '1'; }catch(e){}
+  /* Everyone gets a private, blank copy that lives on their own phone. The owner switch (?owner=1, once per device) opens the real cloud data instead. */
+  let on = true;
+  try{
+    const q = new URLSearchParams(location.search);
+    if (q.get('owner') === '1') localStorage.setItem('cairnlabs_owner','1');
+    if (q.get('owner') === '0' || q.get('fresh') === '1') localStorage.removeItem('cairnlabs_owner');
+    if (q.get('fresh') === '0') localStorage.setItem('cairnlabs_owner','1');
+    on = localStorage.getItem('cairnlabs_owner') !== '1';
+    if (on && navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+  }catch(e){}
   window.CAIRN_FRESH = on;
   if (!on) return;
   document.title = 'Cairn Fresh';
@@ -1078,7 +1086,7 @@ async function init(){
   }catch(e){ db = null; }
   maybeWelcome();
   if (window.CAIRN_FRESH){
-    const bar = document.createElement('div'); bar.className = 'freezebar'; bar.innerHTML = '<span>Fresh preview (this phone only)</span><button id="freshReset">Start over</button>';
+    const bar = document.createElement('div'); bar.className = 'freezebar'; bar.innerHTML = '<span>Test version. Saved on this phone.</span><button id="freshReset">Start over</button>';
     document.body.insertBefore(bar, document.body.firstChild);
     document.getElementById('freshReset').onclick = () => { if (!confirm('Erase this preview and start over?')) return; ['cairnlabs_fresh_db','cairnlabs_welcomed','cairnlabs_settings','cairnlabs_trail'].forEach(k => { try{ localStorage.removeItem(k); }catch(e){} }); location.reload(); };
   }
