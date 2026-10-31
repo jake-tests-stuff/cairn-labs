@@ -711,6 +711,7 @@ select.crin{ appearance:none; }
 .blankday{ padding:22px 16px; text-align:left; }
 .bdq{ font-family:var(--serif); font-size:28px; line-height:1.15; color:var(--fg); margin-bottom:6px; }
 .bdbig{ width:100%; margin-top:14px; flex:none; } .bdalt{ width:100%; margin-top:8px; }
+.exswap{ background:transparent; border:1px solid var(--line); color:var(--muted); font-size:12px; padding:3px 8px; border-radius:8px; }
 .exdel{ background:transparent; border:0; color:var(--muted); font-size:16px; padding:2px 6px; line-height:1; }
 .quick .setrow{ grid-template-columns:20px 1fr 64px 54px 36px; } .quick .setrow input[data-field="rpe"]{ display:none; }
 @media (max-width:380px){ .quick .setrow{ grid-template-columns:16px 1fr 56px 48px 34px; } }
@@ -991,10 +992,15 @@ function dayItems(){
       k, ex: c.ex, raw: eff ? `${eff}x${c.reps||''}` : null,
       sets: eff, baseSets: base, reps: c.reps||null, lift:null, pct:null, tw: c.tw ?? null,
       rpe: c.rpe || null, rest: c.rest || autoRest(c.ex, c.muscles), notes: c.notes || null, muscles: c.muscles || [],
-      hidden:false, custom:true, customId: c.id,
+      hidden:false, custom:true, customId: c.id, after: c.after || null,
     };
   });
-  return { program, custom, all: program.concat(custom) };
+  /* a swapped-in exercise takes the place of the one it replaced; other additions go at the end */
+  let all = program.slice();
+  const tail = [];
+  custom.forEach(c => { const i = c.after ? all.findIndex(x => x.k === c.after) : -1; if (i >= 0){ let j = i + 1; while (j < all.length && all[j].custom && all[j].after === c.after) j++; all.splice(j, 0, c); } else tail.push(c); });
+  all = all.concat(tail);
+  return { program, custom, all };
 }
 
 /* supersets: a linked exercise alternates with the next visible lift. Only the day you are viewing is considered. */
@@ -1449,7 +1455,7 @@ function renderDay(){
       <div class="card ${isPrimary?'primary':''} ${item.hidden?'cardhidden':''} ${(() => { const s = ssInfo(item.k); return s && s.inGroup ? 'ss' : ''; })()}">
         <div class="exhead">
           <div class="exname">${esc(item.ex)}${logDoc[item.k] && logDoc[item.k].pr ? '<span class="prtag" title="Personal record">PR</span>' : ''}${(() => { const s = ssInfo(item.k); return s && s.inGroup ? '<span class="sstag" title="Superset">SS ' + s.tag + '</span>' : ''; })()}</div>
-          <div class="chips">${chips.join('')}${item.custom && !editMode ? `<button class="exdel" data-exdel="${item.customId}" aria-label="Remove ${esc(item.ex)}">&#10005;</button>` : ''}</div>
+          <div class="chips">${chips.join('')}${!editMode && item.sets != null && !isWarm(item.ex) ? `<button class="exswap" data-swapx="${item.k}">Swap</button>` : ''}${item.custom && !editMode ? `<button class="exdel" data-exdel="${item.customId}" aria-label="Remove ${esc(item.ex)}">&#10005;</button>` : ''}</div>
         </div>
         ${muscleChips || miniFig ? `<div class="mrow"><div class="mchips">${muscleChips}</div>${miniFig}</div>` : ''}
         ${setAdjRow}
@@ -1485,6 +1491,7 @@ function wireQuick(){
   document.querySelectorAll('[data-setminus]').forEach(b => b.onclick = () => adjustSetCount(b.dataset.setminus, -1));
   document.querySelectorAll('[data-setplus]').forEach(b => b.onclick = () => adjustSetCount(b.dataset.setplus, 1));
   document.querySelectorAll('[data-exdel]').forEach(b => b.onclick = () => removeCustomEx(b.dataset.exdel));
+  document.querySelectorAll('[data-swapx]').forEach(b => b.onclick = () => openSwapSheet(b.dataset.swapx));
   /* swipe an exercise's title row to the left to remove it */
   document.querySelectorAll('.card .exhead').forEach(h => {
     const btn = h.querySelector('[data-exdel]'); if (!btn) return;
@@ -3319,7 +3326,53 @@ async function doSwap(key, idx){
   renderDay();
 }
 
-/* ---- weekly pattern suggestion ---- */
+/* ---- swap any exercise for another, for today only. The new one takes the old one's place. ---- */
+function openSwapSheet(key){
+  const it = findItem(key); if (!it) return;
+  const base = it.ex.replace(/\s*\(.*\)/,'');
+  let q = '', mus = '';
+  const mine = (musclesFor(it) || []).slice(0, 1);
+  mus = mine[0] && MUSCLE_TAGS.includes(mine[0]) ? mine[0] : '';
+  const list = () => { const ql = q.trim().toLowerCase(); return allExercises().filter(e => e.n.toLowerCase() !== base.toLowerCase() && (!mus || e.p.concat(e.s).includes(mus)) && (!ql || e.n.toLowerCase().includes(ql))).sort((a, b) => (b.mine ? 1 : 0) - (a.mine ? 1 : 0) || a.n.localeCompare(b.n)).slice(0, 60); };
+  const pick = async (name, muscles) => {
+    rememberExercise(name, muscles || []);
+    if (it.custom){
+      const arr = (dayEdit.custom || []).slice(), i = arr.findIndex(c => c.id === it.customId);
+      const nc = Object.assign({}, arr[i] || {}, { id:'c' + Date.now(), ex:name, muscles: muscles || [], rest:null, notes:'Swapped in for ' + base + '.' });
+      if (i >= 0) arr[i] = nc; else arr.push(nc);
+      dayEdit.custom = arr;
+      try{ await db.collection('logs').doc(WORKOUTS[curIdx].date + '__custom-' + it.customId).delete(); }catch(e){}
+    } else {
+      const hid = (dayEdit.hidden || []).slice(), hideKey = k => { if (hid.indexOf(k) < 0) hid.push(k); };
+      hideKey(it.k); dayEdit.all_ = null;
+      dayItems().all.forEach(x => { if (x.ex === base + ' — warm-up') hideKey(x.k); });
+      dayEdit.hidden = hid;
+      dayEdit.custom = (dayEdit.custom || []).concat([{ id:'c' + Date.now(), after: it.k, ex:name, sets:it.sets || null, reps:it.reps || null, tw:null, rpe:it.rpe || null, notes:'Swapped in for ' + base + '.', muscles: muscles || [] }]);
+    }
+    await saveDayEdit(); closeSheet(); renderDay();
+  };
+  const paint = (keep) => {
+    const rows = list();
+    openSheet(`<div class="plhead"><div><div class="brand">SWAP FOR TODAY</div><h2 style="font-size:24px;">${esc(base)}</h2></div><button class="ghostbtn" id="swX" style="flex:none;">Cancel</button></div>
+      <input id="swQ" class="crin" type="search" placeholder="Search or type your own" value="${esc(q)}" autocomplete="off">
+      <div class="xpmus">${['All', ...MUSCLE_TAGS].map(m => `<button type="button" class="rtchip ${(m === 'All' ? !mus : mus === m) ? 'on' : ''}" data-xm="${m}">${m}</button>`).join('')}</div>
+      <div class="xplist">${rows.map(e => `<button type="button" class="xprow" data-xn="${esc(e.n)}"><span class="xpn">${esc(e.n)}</span><span class="xpm">${esc(e.p.join(', '))}</span></button>`).join('')}${q.trim() ? `<button type="button" class="xprow" data-own="1"><span class="xpn">Use "${esc(q.trim())}"</span></button>` : ''}</div>`);
+    const qi = document.getElementById('swQ'); if (keep){ qi.focus(); qi.setSelectionRange(q.length, q.length); }
+    qi.oninput = e => { q = e.target.value; paint(true); };
+    document.getElementById('swX').onclick = closeSheet;
+    document.querySelectorAll('[data-xm]').forEach(b => b.onclick = () => { mus = b.dataset.xm === 'All' ? '' : b.dataset.xm; paint(); });
+    document.querySelectorAll('[data-xn]').forEach(b => b.onclick = () => { const e = libLookup(b.dataset.xn); pick(b.dataset.xn, e ? e.p.concat(e.s) : []); });
+    const own = document.querySelector('[data-own]'); if (own) own.onclick = () => pick(q.trim(), mus ? [mus] : []);
+  };
+  paint();
+}
+/* Advice follows the kind of day: lifting days trim sets and weight, cardio and mobility days keep it easy. */
+const READY_EASY = {
+  yellow:'Recommended plan: keep it easy. Stay in Zone 2 and shorten it by about a quarter if it feels like work.',
+  red:'Recommended plan: cut it short, keep the pace conversational, or trade it for a walk and mobility. Nothing here is worth a flare-up.'
+};
+function liftDay(){ return dayItems().all.some(i => i.custom ? i.sets != null : (!i.hidden && i.sets != null && !isWarm(i.ex) && i.lift)); }
+
 let readyWeek = {};
 async function loadReadyWeek(){
   if (!db || offline) return;
@@ -3365,10 +3418,11 @@ function readinessHtml(){
     const sw = swapOptions();
     const isTest = w.phase === 'TEST WEEK';
     const sum = `Sleep ${d.sleep} · Energy ${d.energy} · Back/hips/knees ${d.pain==='none'?'fine':d.pain}`;
-    const recLine = (rl && rl !== 'deload')
+    const lift = liftDay();
+    const recLine = (rl && rl !== 'deload' && lift)
       ? `<div class="reclin"><span>Plan changed based on feel.</span><button class="ghostbtn" id="readyRevert">Tap to revert</button></div>`
-      : ((lv.level!=='green' && d.reverted && !isTest) ? `<div class="reclin"><span>Showing the full plan.</span><button class="ghostbtn" id="readyRevert">Use recommended</button></div>` : '');
-    const text = isTest && lv.level!=='green' ? 'Test week: the plan is left as written. If you feel this low, think about pushing the test back a day or two.' : t[1];
+      : ((lv.level!=='green' && d.reverted && !isTest && lift) ? `<div class="reclin"><span>Showing the full plan.</span><button class="ghostbtn" id="readyRevert">Use recommended</button></div>` : '');
+    const text = isTest && lv.level!=='green' ? 'Test week: the plan is left as written. If you feel this low, think about pushing the test back a day or two.' : (lift || lv.level==='green' ? t[1] : READY_EASY[lv.level]);
     return `
       <div class="ready ${lv.level}">
         <div class="rhead"><span class="rdot"></span><div class="rtitle">${t[0]}</div><button class="ghostbtn" id="readyEdit">Edit</button></div>
