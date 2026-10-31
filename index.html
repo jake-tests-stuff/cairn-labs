@@ -932,7 +932,7 @@ function fmtDate(s){
 /* Quick log: the built-in program stays out of the way and every day starts blank. Plans you pick still show up. */
 function ensureQuickDays(){
   if (!quickMode()) return;
-  WORKOUTS.forEach(w => { if (!w.synthetic) w.planHide = true; });
+  WORKOUTS.forEach(w => { if (!w.synthetic){ w.planHide = true; if (w._focus0 === undefined) w._focus0 = w.focus; w.focus = 'Training'; } });
   const have = new Set(WORKOUTS.map(w => w.date)), t = todayStr();
   for (let i = -60; i <= 90; i++){
     const d = addDaysStr(t, i); if (have.has(d)) continue;
@@ -2708,7 +2708,7 @@ function renderHistory(){
 
 async function populateHistorySelect(){
   const sel = document.getElementById('histSelect');
-  let names = EXNAMES.slice();
+  let names = quickMode() ? [] : EXNAMES.slice();
   if (!offline && db){
     try{
       const snap = await db.collection('logs').orderBy('date','desc').limit(500).get();
@@ -2717,6 +2717,7 @@ async function populateHistorySelect(){
       names = names.concat(Array.from(extra).sort());
     }catch(e){ /* keep static list */ }
   }
+  if (!names.length){ sel.innerHTML = '<option>Nothing logged yet</option>'; const he = document.getElementById('histEmpty'); if (he){ he.hidden = false; he.textContent = 'Log a few workouts and each exercise shows up here with its history.'; } return; }
   if (!names.includes(histExercise)) histExercise = names[0];
   sel.innerHTML = names.map(n => `<option value="${esc(n)}" ${n===histExercise?'selected':''}>${esc(n)}</option>`).join('');
   sel.onchange = () => { histExercise = sel.value; loadHistory(); };
@@ -3056,8 +3057,11 @@ const SIMPLE_SUBS = {
   body: [['readiness','Check-in'],['mobility','Mobility'],['flares','Flare-ups']],
   plan: [['plans','Programs'],['exercises','Exercises']]
 };
+/* Screens built around the owner's own 12-week program. Test copies do not get them. */
+const PROG_ONLY = new Set(['recap','volume','strength','sticking','bench','skips']);
+const progHidden = (k) => !!window.CAIRN_FRESH && quickMode() && PROG_ONLY.has(k);
 function subList(v){
-  if (settings.advanced) return SUBS[v];
+  if (settings.advanced) return SUBS[v].filter(x => !progHidden(x[0]));
   let l = SIMPLE_SUBS[v] || SUBS[v];
   if (v === 'progress' && settings.focus === 'run') l = l.filter(x => x[0] !== 'history' && x[0] !== 'records');
   return l;
@@ -3133,7 +3137,7 @@ function renderSubView(){
   const list = subList(view);
   if (!list.some(x => x[0] === subs[view])) subs[view] = list[0][0];
   if (view === 'progress' && settings.advanced){
-    main.innerHTML = `${hintHtml(view)}<div class="plannav grp">${PROGRESS_GROUPS.map(([name, items], gi) => {
+    main.innerHTML = `${hintHtml(view)}<div class="plannav grp">${PROGRESS_GROUPS.map(([name, items0], gi) => { const items = items0.filter(x => !progHidden(x[0])); if (!items.length) return '';
       const cur = items.find(([k]) => k === subs.progress);
       return `<div class="ddwrap"><button class="mpick ddbtn ${cur ? 'on' : ''}" data-grp="${gi}" aria-haspopup="true" aria-expanded="false">${cur ? cur[1] : name}<span class="car">&#9662;</span></button>
         <div class="ddmenu" hidden>${items.map(([k,l]) => `<button type="button" class="${subs.progress===k?'on':''}" data-sub="${k}">${l}</button>`).join('')}</div></div>`;
@@ -5084,7 +5088,7 @@ function applyPlanRuns(){
         WORKOUTS.push(w);
       } else if (!w.synthetic){
         if (w._focus0 === undefined) w._focus0 = w.focus;
-        w.focus = run.mode === 'replace' ? s.focus : w._focus0 + ' + ' + s.focus;
+        w.focus = run.mode === 'replace' || quickMode() ? s.focus : w._focus0 + ' + ' + s.focus;
         if (run.mode === 'replace') w.planLabel = `Week ${s.week} · ${run.name}`;
       }
       w.items = w.items.concat(s.items.map(uItem));
