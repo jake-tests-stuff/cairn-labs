@@ -3323,7 +3323,9 @@ function greeting(){
   return list[h % list.length](nm ? ', ' + nm : '');
 }
 function stonesSvg(n){
-  const stones = Array.from({ length: 6 }, (_, i) => `<ellipse class="${i < n ? 'lit' : ''}" style="animation-delay:${i * 120}ms" cx="50" cy="${88 - i * 14}" rx="${36 - i * 4.5}" ry="${8.5 - i * .5}"/>`).join('');
+  /* hand-stacked: each stone sits a little off-centre, with its own width, thickness and tilt */
+  const P = [[50,88,36,9,-1.5],[46.5,74,31,8.5,2],[53,61,26,8,-3],[48,49,21.5,7.5,2.5],[52.5,38,17,7,-2],[49,28,12,6.2,3]];
+  const stones = P.map(([cx, cy, rx, ry, rot], i) => `<ellipse class="${i < n ? 'lit' : ''}" style="animation-delay:${i * 120}ms" cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" transform="rotate(${rot} ${cx} ${cy})"/>`).join('');
   return `<svg class="stonesvg" viewBox="0 0 100 100" aria-hidden="true">${stones}</svg>`;
 }
 function checkinResult(d){
