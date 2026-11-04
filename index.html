@@ -3294,7 +3294,7 @@ const R_ENERGY = [['fresh','Fresh',2],['normal','Normal',1],['beat','Beat',0]];
 const R_PAIN = [['none','Fine',2],['mild','Mild',1],['flaring','Flaring',0]];
 const PAIN_AREAS = ['Low back','Hips','Knees','Shoulders','Other'];
 const READY_TEXT = {
-  green:['Green','Run it as written. What is planned is a ceiling, not a target.'],
+  green:['Green','Run it as written. The weights are a ceiling, not a target.'],
   yellow:['Yellow','Recommended plan: one fewer set on the main lifts. Stop each set around RPE 7.'],
   red:['Red','Recommended plan: two fewer sets and about 10% off the weights. Or trade this session for mobility and Zone 2. Nothing here is worth a flare-up.']
 };
@@ -3366,7 +3366,7 @@ function checkinResult(d){
   const title = { great:'Feeling great', mid:'Solid enough', low:'Take it easy today' }[tier];
   const lift = liftDay(), w = WORKOUTS[curIdx], planned = w && !isBlankDay(w);
   let tip;
-  if (tier === 'great') tip = planned ? READY_TEXT.green[1] : 'Good day to push a little. Pick something you enjoy and go for it.';
+  if (tier === 'great') tip = planned ? (lift ? READY_TEXT.green[1] : READY_EASY.green) : 'Good day to push a little. Pick something you enjoy and go for it.';
   else if (planned) tip = lift ? READY_TEXT[lv.level][1] : READY_EASY[lv.level];
   else tip = tier === 'mid' ? 'Go a little lighter than usual. Fewer sets, or an easy session, still counts.' : 'Keep it gentle: a walk, mobility or an easy session is plenty. Nothing is worth a flare-up.';
   return { stones, tier, title, tip };
@@ -3548,6 +3548,7 @@ function openSwapSheet(key){
 }
 /* Advice follows the kind of day: lifting days trim sets and weight, cardio and mobility days keep it easy. */
 const READY_EASY = {
+  green:'Run it as written. The effort is a ceiling, not a target.',
   yellow:'Recommended plan: keep it easy. Stay in Zone 2 and shorten it by about a quarter if it feels like work.',
   red:'Recommended plan: cut it short, keep the pace conversational, or trade it for a walk and mobility. Nothing here is worth a flare-up.'
 };
@@ -3602,7 +3603,7 @@ function readinessHtml(){
     const recLine = (rl && rl !== 'deload' && lift)
       ? `<div class="reclin"><span>Plan changed based on feel.</span><button class="ghostbtn" id="readyRevert">Tap to revert</button></div>`
       : ((lv.level!=='green' && d.reverted && !isTest && lift) ? `<div class="reclin"><span>Showing the full plan.</span><button class="ghostbtn" id="readyRevert">Use recommended</button></div>` : '');
-    const text = isTest && lv.level!=='green' ? 'Test week: the plan is left as written. If you feel this low, think about pushing the test back a day or two.' : (lift || lv.level==='green' ? t[1] : READY_EASY[lv.level]);
+    const text = isTest && lv.level!=='green' ? 'Test week: the plan is left as written. If you feel this low, think about pushing the test back a day or two.' : (lift ? t[1] : READY_EASY[lv.level]);
     return `
       <div class="ready ${lv.level}">
         <div class="rhead"><span class="rdot"></span><div class="rtitle">${t[0]}</div><button class="ghostbtn" id="readyEdit">Edit</button></div>
@@ -6274,7 +6275,7 @@ function renderAccount(){
   main.innerHTML = `
     <div class="card"><div class="exname">You</div>
       <div class="notes" id="acctLine"></div>
-      <div class="notes" style="opacity:.6;">App version v39</div>
+      <div class="notes" style="opacity:.6;">App version v40</div>
       ${window.CAIRN_FRESH ? '<div class="notes">This is a test version. Everything you log stays on this phone only, and a different phone starts blank.</div><button class="ghostbtn danger" id="acctReset" style="align-self:flex-start;">Erase and start over</button>' : '<button class="ghostbtn" id="acctOut" style="align-self:flex-start;">Sign out</button>'}
     </div>
     <div class="card"><div class="exname">Your data</div>
