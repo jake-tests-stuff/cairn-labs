@@ -138,6 +138,7 @@ main{ flex:1; padding-block:14px 90px; display:flex; flex-direction:column; gap:
 .customtag{ font-size:10.5px; color:var(--accent); letter-spacing:.06em; font-weight:700; }
 .ghostbtn{ background:transparent; border:1px solid var(--line); color:var(--muted); font-size:12px; padding:5px 10px; border-radius:20px; }
 .ghostbtn.danger{ color:var(--warn); border-color:var(--warn); }
+.ghostbtn.on{ color:var(--accent); border-color:var(--accent); }
 .ghostbtn[hidden]{ display:none; }
 
 .setrow{ display:grid; grid-template-columns:20px 1fr 58px 50px 42px 36px; gap:5px; align-items:center; }
@@ -3159,7 +3160,7 @@ function dateStrAgo(n){ const d=new Date(); d.setDate(d.getDate()-n); return d.g
 function offlineNote(){ return `<div class="offlineflag">Not connected. Entries here will not be saved.</div>`; }
 
 /* ---- settings (per-viewer, stored locally) ---- */
-let settings = { mode:'quick', advanced:false, timer:true, sound:true, loudAlarm:false, units:'imperial', theme:'system', accent:'rust', bar:45, plates:[45,35,25,10,5,2.5] };
+let settings = { mode:'quick', advanced:false, timer:true, sound:true, loudAlarm:false, iconColor:'match', units:'imperial', theme:'system', accent:'rust', bar:45, plates:[45,35,25,10,5,2.5] };
 try{ const s = JSON.parse(localStorage.getItem('cairnlabs_settings')||'null'); if (s) settings = Object.assign(settings, s); }catch(e){}
 const ACCENTS = {
   amber:{ n:'Amber', d:'#E0A233', l:'#A6631B' },
@@ -3185,10 +3186,29 @@ function applyAccent(){
   const light = settings.theme === 'light' || (settings.theme !== 'dark' && window.matchMedia && matchMedia('(prefers-color-scheme: light)').matches);
   r.style.setProperty('--accent', light ? a.l : a.d);
   r.style.setProperty('--accent-fg', light ? '#FFFFFF' : '#14120F');
+  if (typeof applyIcons === 'function') applyIcons();
 }
 try{ matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => applyAccent()); }catch(e){}
 function applyTheme(){ const r = document.documentElement; if (settings.theme === 'light' || settings.theme === 'dark') r.setAttribute('data-theme', settings.theme); else r.removeAttribute('data-theme'); applyAccent(); }
 applyTheme(); applyAccent();
+/* Home-screen icon: one picture per theme color. iPhone reads the apple-touch-icon when Cairn is added to the Home Screen. */
+function iconKey(){
+  const acc = ACCENT_ALIAS[settings.accent] || settings.accent;
+  const k = settings.iconColor && settings.iconColor !== 'match' ? settings.iconColor : acc;
+  return ACCENTS[k] ? k : 'rust';
+}
+function iconUrl(sz){ return 'icons/icon-' + iconKey() + '-' + sz + '.png'; }
+function applyIcons(){
+  try{
+    let a = document.querySelector('link[rel="apple-touch-icon"]');
+    if (!a){ a = document.createElement('link'); a.rel = 'apple-touch-icon'; document.head.appendChild(a); }
+    a.href = iconUrl(180);
+    let f = document.querySelector('link[rel="icon"]');
+    if (!f){ f = document.createElement('link'); f.rel = 'icon'; f.type = 'image/png'; document.head.appendChild(f); }
+    f.href = iconUrl(192);
+  }catch(e){}
+}
+applyIcons();
 function saveSettings(){ try{ localStorage.setItem('cairnlabs_settings', JSON.stringify(settings)); }catch(e){} }
 const isMetric = () => settings.units === 'metric';
 const quickMode = () => settings.mode !== 'program';
@@ -6193,8 +6213,25 @@ function renderThemePicker(){
   document.getElementById('thBack').onclick = () => { settingsPage = 'main'; renderSettings(); window.scrollTo(0,0); };
   main.querySelectorAll('[data-th]').forEach(b => b.onclick = () => { settings.accent = b.dataset.th; saveSettings(); applyAccent(); renderThemePicker(); });
 }
+function renderIconPicker(){
+  const main = mainEl();
+  const matching = !settings.iconColor || settings.iconColor === 'match';
+  const cur = iconKey();
+  const stone = (hex) => `<svg viewBox="0 0 100 100" aria-hidden="true" style="--accent:${hex}"><g stroke="var(--bg)" stroke-width="1.6"><ellipse cx="50" cy="69" rx="31" ry="12" style="fill:var(--accent)"/><ellipse cx="48" cy="54" rx="25" ry="11" style="fill:color-mix(in srgb,var(--accent) 84%,#000)"/><ellipse cx="52" cy="40" rx="19" ry="10" style="fill:color-mix(in srgb,var(--accent) 82%,#fff)"/><ellipse cx="49" cy="28" rx="12" ry="8.5" style="fill:color-mix(in srgb,var(--accent) 92%,#000)"/></g></svg>`;
+  main.innerHTML = `
+    <button class="backlink" id="icBack" type="button">‹ SETTINGS</button>
+    <h2 class="thtitle">App icon color</h2>
+    <div class="notes">The picture iPhone uses when you add Cairn to your Home Screen. If Cairn is already on your Home Screen, remove it and add it again to get the new color.</div>
+    <div style="display:flex;align-items:center;gap:14px;margin:12px 0;"><img src="${iconUrl(192)}" alt="Icon preview" width="84" height="84" style="border-radius:19px;display:block;"><div class="notes" style="margin:0;">${matching ? 'Matches your theme color' : esc(ACCENTS[cur].n)}</div></div>
+    <button class="ghostbtn ${matching ? 'on' : ''}" id="icMatch" type="button" style="margin-bottom:8px;">${matching ? '&#10003; ' : ''}Match theme color</button>
+    <div class="tgrid">${Object.entries(ACCENTS).map(([k,a]) => `<button type="button" class="tc ${!matching && cur===k ? 'on' : ''}" data-ic="${k}" aria-label="${a.n}">${stone(a.d)}<b>${a.n}</b></button>`).join('')}</div>`;
+  document.getElementById('icBack').onclick = () => { settingsPage = 'main'; renderSettings(); window.scrollTo(0,0); };
+  document.getElementById('icMatch').onclick = () => { settings.iconColor = 'match'; saveSettings(); applyIcons(); renderIconPicker(); };
+  main.querySelectorAll('[data-ic]').forEach(b => b.onclick = () => { settings.iconColor = b.dataset.ic; saveSettings(); applyIcons(); renderIconPicker(); });
+}
 function renderSettings(){
   if (settingsPage === 'theme') return renderThemePicker();
+  if (settingsPage === 'icon') return renderIconPicker();
   const main = mainEl();
   main.innerHTML = `
     <div class="notes">Timer settings stay on this device.</div>
@@ -6211,6 +6248,7 @@ function renderSettings(){
     <div class="card">
       <div class="exname">Appearance</div>
       <button class="linkrow" id="themeOpen" type="button"><span><b>Theme color</b><small>Used on every stone, button and bar</small></span><span class="lv"><i class="dot"></i>${esc((ACCENTS[ACCENT_ALIAS[settings.accent] || settings.accent] || ACCENTS.rust).n)} ›</span></button>
+      <button class="linkrow" id="iconOpen" type="button"><span><b>App icon color</b><small>For your Home Screen icon</small></span><span class="lv">${(!settings.iconColor || settings.iconColor === 'match') ? 'Matches theme' : esc(ACCENTS[iconKey()].n)} &rsaquo;</span></button>
       <div class="notes">Light or Dark. System follows your iPhone.</div>
       <div class="rareas" id="themePick">${[['system','System'],['light','Light'],['dark','Dark']].map(([k,l]) => `<button class="mpick ${settings.theme===k?'on':''}" data-theme-pick="${k}">${l}</button>`).join('')}</div>
       <button class="ghostbtn" id="prPreview" style="align-self:flex-start;">Preview PR celebration</button>
@@ -6237,6 +6275,7 @@ function renderSettings(){
 `;
   document.getElementById('swTimer').onclick = (e) => { settings.timer = !settings.timer; saveSettings(); e.currentTarget.classList.toggle('on', settings.timer); };
   document.getElementById('themeOpen').onclick = () => { settingsPage = 'theme'; renderSettings(); window.scrollTo(0,0); };
+  document.getElementById('iconOpen').onclick = () => { settingsPage = 'icon'; renderSettings(); window.scrollTo(0,0); };
   document.querySelectorAll('[data-theme-pick]').forEach(b => b.onclick = () => {
     settings.theme = b.dataset.themePick; saveSettings(); applyTheme();
     document.querySelectorAll('[data-theme-pick]').forEach(x => x.classList.toggle('on', x === b));
@@ -6275,7 +6314,7 @@ function renderAccount(){
   main.innerHTML = `
     <div class="card"><div class="exname">You</div>
       <div class="notes" id="acctLine"></div>
-      <div class="notes" style="opacity:.6;">App version v40</div>
+      <div class="notes" style="opacity:.6;">App version v41</div>
       ${window.CAIRN_FRESH ? '<div class="notes">This is a test version. Everything you log stays on this phone only, and a different phone starts blank.</div><button class="ghostbtn danger" id="acctReset" style="align-self:flex-start;">Erase and start over</button>' : '<button class="ghostbtn" id="acctOut" style="align-self:flex-start;">Sign out</button>'}
     </div>
     <div class="card"><div class="exname">Your data</div>
