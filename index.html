@@ -3545,7 +3545,7 @@ async function doSwap(key, idx){
 function openSwapSheet(key){
   const it = findItem(key); if (!it) return;
   const base = it.ex.replace(/\s*\(.*\)/,'');
-  let q = '', mus = '';
+  let q = '', mus = '', sel = null; // sel: tapped but not yet swapped in; tap again to unpick
   const mine = (musclesFor(it) || []).slice(0, 1);
   mus = mine[0] && MUSCLE_TAGS.includes(mine[0]) ? mine[0] : '';
   const list = () => { const ql = q.trim().toLowerCase(); return allExercises().filter(e => e.n.toLowerCase() !== base.toLowerCase() && (!mus || e.p.concat(e.s).includes(mus)) && (!ql || e.n.toLowerCase().includes(ql))).sort((a, b) => (b.mine ? 1 : 0) - (a.mine ? 1 : 0) || a.n.localeCompare(b.n)).slice(0, 60); };
@@ -3571,13 +3571,20 @@ function openSwapSheet(key){
     openSheet(`<div class="plhead"><div><div class="brand">SWAP FOR TODAY</div><h2 style="font-size:24px;">${esc(base)}</h2></div><button class="ghostbtn" id="swX" style="flex:none;">Cancel</button></div>
       <input id="swQ" class="crin" type="search" placeholder="Search or type your own" value="${esc(q)}" autocomplete="off">
       <div class="xpmus">${['All', ...MUSCLE_TAGS].map(m => `<button type="button" class="rtchip ${(m === 'All' ? !mus : mus === m) ? 'on' : ''}" data-xm="${m}">${m}</button>`).join('')}</div>
-      <div class="xplist">${rows.map(e => `<button type="button" class="xprow" data-xn="${esc(e.n)}"><span class="xpn">${esc(e.n)}</span><span class="xpm">${esc(e.p.join(', '))}</span></button>`).join('')}${q.trim() ? `<button type="button" class="xprow" data-own="1"><span class="xpn">Use "${esc(q.trim())}"</span></button>` : ''}</div>`);
+      <button class="savebtn" id="swGo" ${sel ? '' : 'disabled'}>${sel ? 'Swap in ' + esc(sel.n) : 'Tap an exercise to pick it'}</button>
+      <div class="xplist">${rows.map(e => `<button type="button" class="xprow ${sel && sel.n === e.n ? 'on' : ''}" data-xn="${esc(e.n)}"><span class="xpn">${esc(e.n)}</span><span class="xpm">${esc(e.p.join(', '))}</span></button>`).join('')}${q.trim() ? `<button type="button" class="xprow ${sel && sel.own && sel.n === q.trim() ? 'on' : ''}" data-own="1"><span class="xpn">Use "${esc(q.trim())}"</span></button>` : ''}</div>`);
     const qi = document.getElementById('swQ'); if (keep){ qi.focus(); qi.setSelectionRange(q.length, q.length); }
     qi.oninput = e => { q = e.target.value; paint(true); };
     document.getElementById('swX').onclick = closeSheet;
     document.querySelectorAll('[data-xm]').forEach(b => b.onclick = () => { mus = b.dataset.xm === 'All' ? '' : b.dataset.xm; paint(); });
-    document.querySelectorAll('[data-xn]').forEach(b => b.onclick = () => { const e = libLookup(b.dataset.xn); pick(b.dataset.xn, e ? e.p.concat(e.s) : []); });
-    const own = document.querySelector('[data-own]'); if (own) own.onclick = () => pick(q.trim(), mus ? [mus] : []);
+    const refreshSel = () => {
+      document.querySelectorAll('[data-xn]').forEach(x => x.classList.toggle('on', !!sel && !sel.own && sel.n === x.dataset.xn));
+      const o = document.querySelector('[data-own]'); if (o) o.classList.toggle('on', !!sel && !!sel.own && sel.n === q.trim());
+      const go = document.getElementById('swGo'); if (go){ go.disabled = !sel; go.textContent = sel ? 'Swap in ' + sel.n : 'Tap an exercise to pick it'; }
+    };
+    document.querySelectorAll('[data-xn]').forEach(b => b.onclick = () => { const e = libLookup(b.dataset.xn); const n = b.dataset.xn; sel = (sel && !sel.own && sel.n === n) ? null : { n, m: e ? e.p.concat(e.s) : [] }; refreshSel(); });
+    document.getElementById('swGo').onclick = () => { if (sel) pick(sel.n, sel.m); };
+    const own = document.querySelector('[data-own]'); if (own) own.onclick = () => { const n = q.trim(); sel = (sel && sel.own && sel.n === n) ? null : { n, m: mus ? [mus] : [], own:true }; refreshSel(); };
   };
   paint();
 }
@@ -6346,7 +6353,7 @@ function renderAccount(){
   main.innerHTML = `
     <div class="card"><div class="exname">You</div>
       <div class="notes" id="acctLine"></div>
-      <div class="notes" style="opacity:.6;">App version v45</div>
+      <div class="notes" style="opacity:.6;">App version v46</div>
       ${window.CAIRN_FRESH ? '<div class="notes">This is a test version. Everything you log stays on this phone only, and a different phone starts blank.</div><button class="ghostbtn danger" id="acctReset" style="align-self:flex-start;">Erase and start over</button>' : '<button class="ghostbtn" id="acctOut" style="align-self:flex-start;">Sign out</button>'}
     </div>
     <div class="card"><div class="exname">Your data</div>
