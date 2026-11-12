@@ -1586,10 +1586,15 @@ function wireQuick(){
 }
 
 /* ===== Add exercise: pick from the library, see what it hits, or make your own ===== */
-function openExercisePicker(onAdd, onDone){
-  let q = '', mus = '', mk = false, picked = new Set(), made = new Set();
+function openExercisePicker(onAdd, onDone, onRemove){
+  let q = '', mus = '', mk = false, picked = new Set(), made = new Set(), addedId = {};
+  const dropOne = async (name) => { // tapped again: take it back out
+    if (onRemove){ onRemove(name); return; }
+    const id = addedId[name]; delete addedId[name]; if (id) await removeCustomEx(id);
+  };
   const addOne = onAdd ? async (name, muscles) => { onAdd(name, muscles || []); rememberExercise(name, muscles || []); } : async (name, muscles) => {
     const id = 'c' + Date.now() + Math.floor(Math.random() * 99);
+    addedId[name] = id;
     dayEdit.custom = (dayEdit.custom || []).concat([{ id, ex: name, sets: 3, reps: null, tw: null, muscles: muscles || [] }]);
     rememberExercise(name, muscles || []);
     await saveDayEdit(); renderDay();
@@ -1607,8 +1612,12 @@ function openExercisePicker(onAdd, onDone){
     const rows = list();
     el.innerHTML = rows.length ? rows.map(rowHtml).join('') : '<div class="notes" style="padding:12px 0;">No match. Make your own below.</div>';
     el.querySelectorAll('[data-xn]').forEach(b => b.onclick = async () => {
-      const name = b.dataset.xn, e = libLookup(name); if (picked.has(name)) return;
-      picked.add(name); b.classList.add('on'); const a = b.querySelector('.xpa'); if (a) a.innerHTML = '&#10003;';
+      const name = b.dataset.xn, e = libLookup(name); const a = b.querySelector('.xpa');
+      if (picked.has(name)){ // tap a picked exercise again to unpick it
+        picked.delete(name); b.classList.remove('on'); if (a) a.innerHTML = '+';
+        await dropOne(name); return;
+      }
+      picked.add(name); b.classList.add('on'); if (a) a.innerHTML = '&#10003;';
       await addOne(name, e ? e.p.concat(e.s) : []);
     });
   };
@@ -1631,7 +1640,7 @@ function openExercisePicker(onAdd, onDone){
     document.querySelectorAll('[data-mm]').forEach(b => b.onclick = () => { const m = b.dataset.mm; made.has(m) ? made.delete(m) : made.add(m); b.classList.toggle('on'); });
     const mm = document.getElementById('xpMk'); if (mm) mm.onclick = async () => {
       const n = document.getElementById('xpName').value.trim(); if (!n) return;
-      await addOne(n, Array.from(made)); picked.add(n); mk = false; made.clear(); q = ''; paint();
+      picked.add(n); await addOne(n, Array.from(made)); mk = false; made.clear(); q = ''; paint();
     };
   };
   paint();
@@ -6114,7 +6123,7 @@ function openBuilder(id, keep){
     else if (d.bm){ bld.mode = d.bm; renderBuilder(true); }
     else if (d.bd != null){ const day = bld.days[d.bd]; day.on = !day.on; if (day.on && !day.items.length) day.items.push({ ex:'', sets:'', reps:'' }); renderBuilder(true); }
     else if (d.badd != null){ const di = d.badd; const day = bld.days[di]; if (day.items.length === 1 && !day.items[0].ex.trim()) day.items.length = 0;
-      openExercisePicker((name) => { bld.days[di].items.push({ ex:name, sets:'3', reps:'8-10' }); }, () => openBuilder(null, true)); }
+      openExercisePicker((name) => { bld.days[di].items.push({ ex:name, sets:'3', reps:'8-10' }); }, () => openBuilder(null, true), (name) => { const a = bld.days[di].items, i = a.map(x => x.ex).lastIndexOf(name); if (i >= 0) a.splice(i, 1); }); }
     else if (d.brm){ const [i, n] = d.brm.split(':'); bld.days[i].items.splice(Number(n), 1); renderBuilder(true); }
     else if (d.bdel){ bld.deload = !bld.deload; renderBuilder(true); }
     else if (b.id === 'bCancel'){ closeSheet(); }
@@ -6353,7 +6362,7 @@ function renderAccount(){
   main.innerHTML = `
     <div class="card"><div class="exname">You</div>
       <div class="notes" id="acctLine"></div>
-      <div class="notes" style="opacity:.6;">App version v46</div>
+      <div class="notes" style="opacity:.6;">App version v47</div>
       ${window.CAIRN_FRESH ? '<div class="notes">This is a test version. Everything you log stays on this phone only, and a different phone starts blank.</div><button class="ghostbtn danger" id="acctReset" style="align-self:flex-start;">Erase and start over</button>' : '<button class="ghostbtn" id="acctOut" style="align-self:flex-start;">Sign out</button>'}
     </div>
     <div class="card"><div class="exname">Your data</div>
