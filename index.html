@@ -6340,7 +6340,7 @@ async function saveBuilder(){
 }
 
 /* ================= PLAN: SETTINGS ================= */
-const BACKUP_COLLS = ['logs','dayEdits','state','readiness','sessions','bodyweight','functional','flares','skips','sticking','maxhist','planRuns','exnotes','templates','customPlans','exlib'];
+const BACKUP_COLLS = ['logs','cardio','dayEdits','state','readiness','sessions','bodyweight','functional','flares','skips','sticking','maxhist','planRuns','exnotes','templates','customPlans','exlib'];
 async function exportBackup(){
   const msg = document.getElementById('bkMsg');
   if (!db || offline){ msg.textContent = 'Not connected.'; return; }
@@ -6553,7 +6553,7 @@ function renderAccount(){
   main.innerHTML = `
     <div class="card"><div class="exname">You</div>
       <div class="notes" id="acctLine"></div>
-      <div class="notes" style="opacity:.6;">App version v50</div>
+      <div class="notes" style="opacity:.6;">App version v51</div>
       ${window.CAIRN_FRESH ? '<div class="notes">This is a test version. Everything you log stays on this phone only, and a different phone starts blank.</div><button class="ghostbtn danger" id="acctReset" style="align-self:flex-start;">Erase and start over</button>' : '<button class="ghostbtn" id="acctOut" style="align-self:flex-start;">Sign out</button>'}
     </div>
     <div class="card"><div class="exname">Your data</div>
